@@ -10,7 +10,7 @@ from datasets.util import task1a_folder
 
 @dataclass(frozen=True)
 class Task1ASample:
-    tweet_id: str
+    id: str
     tweet_url: str
     tweet_text: str
     ocr_text: str
@@ -37,7 +37,7 @@ class Task1ASample:
         with Image.open(task1a_folder() / image_path) as img:
             image = img.load()
         return Task1ASample(
-            tweet_id=tweet_id,
+            id=tweet_id,
             tweet_url=tweet_url,
             tweet_text=tweet_text,
             ocr_text=ocr_text,
