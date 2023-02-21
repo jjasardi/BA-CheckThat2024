@@ -62,7 +62,7 @@ class ReferenceTweetNormalizer(Callable[[str], str]):
 
 class TweetNormalizer(Callable[[str], str]):
 
-    def __int__(self):
+    def __init__(self):
         self.url_extractor = URLExtract()
         self.user_regex = re.compile(r'@\S+')
 
