@@ -6,15 +6,14 @@ import json
 from PIL import Image
 
 from datasets.util import task1a_folder
+from datasets.base import Sample
 
 
 @dataclass(frozen=True)
-class Task1ASample:
-    id: str
+class Task1ASample(Sample):
     tweet_url: str
     tweet_text: str
     ocr_text: str
-    class_label: bool
     image_path: str
     image_url: str
     image: Image

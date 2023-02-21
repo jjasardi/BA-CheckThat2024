@@ -4,13 +4,12 @@ from dataclasses import dataclass
 import csv
 
 from datasets.util import task1b_folder
+from datasets.base import Sample
 
 
 @dataclass(frozen=True)
-class Task1BSample:
-    id: str
+class Task1BSample(Sample):
     text: str
-    class_label: bool
 
     @staticmethod
     def from_sample_dict(
