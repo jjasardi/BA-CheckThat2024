@@ -5,9 +5,8 @@ from sklearn.svm import LinearSVC
 
 
 from datasets.task1a import load
-from datasets.base import Sample
 from preprocessing.text import TweetNormalizer
-from evaluation import evaluate
+from evaluation import evaluate, build_prediction_samples
 
 
 def pipeline(seed: int = 0xdeadbeef) -> Pipeline:
@@ -52,15 +51,7 @@ def main():
     ]
     pred = clf.predict(dev_texts)
 
-    preds = [
-        Sample(
-            id=s.id,
-            class_label=lbl,
-        )
-        for s, lbl in zip(dataset.dev_test, pred)
-    ]
-
-    print(evaluate(gold=dataset.dev_test, prediction=preds))
+    print(evaluate(gold=dataset.dev_test, prediction=build_prediction_samples(dataset.dev_test, pred)))
 
 
 if __name__ == '__main__':
