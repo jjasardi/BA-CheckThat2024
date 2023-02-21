@@ -1,0 +1,58 @@
+
+from typing import List
+from dataclasses import dataclass
+import csv
+
+from datasets.util import task1b_folder
+
+
+@dataclass(frozen=True)
+class Task1BSample:
+    id: str
+    text: str
+    class_label: bool
+
+    @staticmethod
+    def from_sample_dict(
+        sentence_id: str,
+        text: str,
+        class_label: str,
+    ) -> 'Task1BSample':
+
+        if class_label not in {'Yes', 'No'}:
+            raise ValueError(f"expect 'class_label' to be one of ['Yes', 'No'],"
+                             f"received '{class_label}'")
+
+        return Task1BSample(
+            id=sentence_id,
+            text=text,
+            class_label=class_label == 'Yes',
+        )
+
+
+@dataclass(frozen=True)
+class Task1B:
+    train: List[Task1BSample]
+    dev: List[Task1BSample]
+    dev_test: List[Task1BSample]
+
+
+def load() -> Task1B:
+    args = {}
+
+    for split in ["train", "dev", "dev_test"]:
+        fname = f"CT23_1{'B' if split == 'dev_test' else 'C'}_checkworthy_english_{split}.tsv"
+
+        with (task1b_folder() / fname).open('r') as fin:
+            reader = csv.DictReader(fin, delimiter="\t", quoting=csv.QUOTE_MINIMAL)
+            raw = list(reader)
+
+        args[split] = [
+            Task1BSample.from_sample_dict(**{
+                k.lower(): v
+                for k, v in d.items()
+            })
+            for d in raw
+        ]
+
+    return Task1B(**args)
