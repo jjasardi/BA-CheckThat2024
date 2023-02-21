@@ -24,6 +24,19 @@ class EvalResult:
                f" R: {self.recall:.4f}, F1: {self.f1:.4f}"
 
 
+def build_prediction_samples(
+    gold_samples: List[Sample],
+    raw_predictions: List[bool],
+) -> List[Sample]:
+    return [
+        Sample(
+            id=gold.id,
+            class_label=raw_label,
+        )
+        for gold, raw_label in zip(gold_samples, raw_predictions)
+    ]
+
+
 def evaluate(gold: List[Sample], prediction: List[Sample]):
     assert len(gold) == len(prediction)
     for g, p in zip(gold, prediction):

@@ -1,2 +1,2 @@
 
-from evaluation.evaluation import evaluate, EvalResult
+from evaluation.evaluation import evaluate, build_prediction_samples
