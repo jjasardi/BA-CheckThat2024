@@ -9,7 +9,7 @@ from sklearn.metrics import (
     precision_score,
 )
 
-from datasets.base import Sample
+from tasks.base import Sample
 
 
 @dataclass(frozen=True)

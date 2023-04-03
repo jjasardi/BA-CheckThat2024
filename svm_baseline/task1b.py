@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 
 
-from datasets.task1b import load
+from tasks.task1b import load
 from evaluation import evaluate, build_prediction_samples
 
 

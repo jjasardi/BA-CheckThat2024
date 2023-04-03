@@ -3,8 +3,8 @@ from typing import List
 from dataclasses import dataclass
 import csv
 
-from datasets.util import task1b_folder
-from datasets.base import Sample
+from tasks.util import task1b_folder
+from tasks.base import Sample
 
 
 @dataclass(frozen=True)

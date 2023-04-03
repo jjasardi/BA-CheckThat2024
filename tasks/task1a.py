@@ -5,8 +5,8 @@ import json
 
 from PIL import Image
 
-from datasets.util import task1a_folder
-from datasets.base import Sample
+from tasks.util import task1a_folder
+from tasks.base import Sample
 
 
 @dataclass(frozen=True)
