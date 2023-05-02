@@ -9,8 +9,10 @@ import torch.nn.functional as F
 
 import ot
 
+from tqdm import tqdm
 
-class TokenAlignmentKernel:
+
+class TokenAlignmentDistance:
 
     def __init__(
         self,
@@ -72,23 +74,22 @@ class TokenAlignmentKernel:
         ot_emd = ot.emd(w1, w2, cost)
         return (ot_emd * cost).sum()
 
-    def kernel(
+    def distances(
         self,
         x: List[str],
         y: Optional[List[str]] = None,
-        gamma: float = 1.,
     ):
 
         x_weights = []
         x_embeds = []
-        for s in x:
+        for s in tqdm(x):
             w, e = self.token_embeds(s)
             x_weights.append(w)
             x_embeds.append(e)
 
         if y is None:
             dist_mat = torch.zeros((len(x), len(x)))
-            for ix in range(len(x)):
+            for ix in tqdm(range(len(x))):
                 for jx in range(ix, len(x)):
                     dist = self.__alignment_dist(
                         x_weights[ix],
@@ -101,12 +102,12 @@ class TokenAlignmentKernel:
         else:
             y_weights = []
             y_embeds = []
-            for s in y:
+            for s in tqdm(y):
                 w, e = self.token_embeds(s)
                 y_weights.append(w)
                 y_embeds.append(e)
             dist_mat = torch.zeros((len(x), len(y)))
-            for ix in range(len(x)):
+            for ix in tqdm(range(len(x))):
                 for jx in range(len(y)):
                     dist_mat[ix, jx] = self.__alignment_dist(
                         x_weights[ix],
@@ -115,5 +116,4 @@ class TokenAlignmentKernel:
                         y_embeds[jx],
                     )
 
-        k = torch.exp(-gamma*dist_mat)
-        return k
+        return dist_mat
