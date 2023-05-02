@@ -2,6 +2,7 @@
 from typing import List
 from dataclasses import dataclass
 import json
+from pathlib import Path
 
 from PIL import Image
 
@@ -14,9 +15,8 @@ class Task1ASample(Sample):
     tweet_url: str
     tweet_text: str
     ocr_text: str
-    image_path: str
+    image_path: Path
     image_url: str
-    image: Image
 
     @staticmethod
     def from_sample_dict(
@@ -33,17 +33,14 @@ class Task1ASample(Sample):
             raise ValueError(f"expect 'class_label' to be one of ['Yes', 'No'],"
                              f"received '{class_label}'")
 
-        with Image.open(task1a_folder() / image_path) as img:
-            image = img.load()
         return Task1ASample(
             id=tweet_id,
             tweet_url=tweet_url,
             tweet_text=tweet_text,
             ocr_text=ocr_text,
             class_label=class_label == 'Yes',
-            image_path=image_path,
+            image_path=task1a_folder() / image_path,
             image_url=image_url,
-            image=image,
         )
 
 
