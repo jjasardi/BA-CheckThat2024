@@ -4,20 +4,21 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 
 
-from tasks.task1b import load
-from evaluation import evaluate, build_prediction_samples
+from checkthat2023.tasks import load
+from checkthat2023.preprocessing.text import TweetNormalizer
+from checkthat2023.evaluation import evaluate, build_prediction_samples
 
 
 def pipeline(seed: int = 0xdeadbeef) -> Pipeline:
     return Pipeline(
         steps=[
             ("tf-idf", TfidfVectorizer(
-                ngram_range=(1, 5),
+                preprocessor=TweetNormalizer(),
+                ngram_range=(1, 2),
                 min_df=3,
-                binary=False,
+                binary=True,
                 norm='l2',
                 use_idf=True,
-                sublinear_tf=True,
                 smooth_idf=True,
             )),
             ("svm", LinearSVC(
@@ -33,7 +34,7 @@ def main():
     dataset = load()
 
     train_txts = [
-        sample.text
+        sample.tweet_text
         for sample in dataset.train
     ]
     train_labels = [
@@ -45,7 +46,7 @@ def main():
     clf.fit(train_txts, train_labels)
 
     dev_texts = [
-        sample.text
+        sample.tweet_text
         for sample in dataset.dev_test
     ]
     pred = clf.predict(dev_texts)

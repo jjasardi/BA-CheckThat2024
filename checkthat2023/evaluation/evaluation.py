@@ -9,7 +9,7 @@ from sklearn.metrics import (
     precision_score,
 )
 
-from tasks.base import Sample
+from checkthat2023.tasks.base import Sample
 
 
 @dataclass(frozen=True)

@@ -4,10 +4,8 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
-from PIL import Image
-
-from tasks.util import task1a_folder
-from tasks.base import Sample
+from checkthat2023.tasks.util import task1a_folder
+from checkthat2023.tasks.base import Sample
 
 
 @dataclass(frozen=True)
