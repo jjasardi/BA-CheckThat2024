@@ -36,7 +36,7 @@ class Task1B:
     dev_test: List[Task1BSample]
 
 
-def load(data_folder: Path) -> Task1B:
+def load(data_folder: Path, dev: bool = False) -> Task1B:
     args = {}
 
     for split in ["train", "dev", "dev_test"]:
@@ -53,5 +53,11 @@ def load(data_folder: Path) -> Task1B:
             })
             for d in raw
         ]
+
+    if dev:
+        args = {
+            k: v[:10]
+            for k, v in args.items()
+        }
 
     return Task1B(**args)
