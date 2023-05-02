@@ -2,8 +2,8 @@
 from typing import List
 from dataclasses import dataclass
 import csv
+from pathlib import Path
 
-from checkthat2023.tasks.util import task1b_folder
 from checkthat2023.tasks.base import Sample
 
 
@@ -36,13 +36,13 @@ class Task1B:
     dev_test: List[Task1BSample]
 
 
-def load() -> Task1B:
+def load(data_folder: Path) -> Task1B:
     args = {}
 
     for split in ["train", "dev", "dev_test"]:
         fname = f"CT23_1{'B' if split == 'dev_test' else 'C'}_checkworthy_english_{split}.tsv"
 
-        with (task1b_folder() / fname).open('r') as fin:
+        with (data_folder / "task1B" / fname).open('r') as fin:
             reader = csv.DictReader(fin, delimiter="\t", quoting=csv.QUOTE_MINIMAL)
             raw = list(reader)
 

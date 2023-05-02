@@ -4,7 +4,6 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
-from checkthat2023.tasks.util import task1a_folder
 from checkthat2023.tasks.base import Sample
 
 
@@ -25,6 +24,7 @@ class Task1ASample(Sample):
         class_label: str,
         image_path: str,
         image_url: str,
+        data_folder: Path,
     ) -> 'Task1ASample':
 
         if class_label not in {'Yes', 'No'}:
@@ -37,7 +37,7 @@ class Task1ASample(Sample):
             tweet_text=tweet_text,
             ocr_text=ocr_text,
             class_label=class_label == 'Yes',
-            image_path=task1a_folder() / image_path,
+            image_path=data_folder / "task1A" / image_path,
             image_url=image_url,
         )
 
@@ -49,17 +49,17 @@ class Task1A:
     dev_test: List[Task1ASample]
 
 
-def load() -> Task1A:
+def load(data_folder: Path) -> Task1A:
     args = {}
 
     for split in ["train", "dev", "dev_test"]:
-        data_file = task1a_folder() /\
+        data_file = data_folder / "task1A" /\
                     f"CT23_1A_checkworthy_multimodal_english_{split}.jsonl"
         with data_file.open('r') as fin:
             raw = [json.loads(line.strip()) for line in fin]
 
         args[split] = [
-            Task1ASample.from_sample_dict(**d)
+            Task1ASample.from_sample_dict(**d, data_folder=data_folder)
             for d in raw
         ]
 

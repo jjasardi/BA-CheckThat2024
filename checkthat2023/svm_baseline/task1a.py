@@ -1,10 +1,12 @@
 
+from pathlib import Path
+
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 
 
-from checkthat2023.tasks import load
+from checkthat2023.tasks.task1a import load
 from checkthat2023.preprocessing.text import TweetNormalizer
 from checkthat2023.evaluation import evaluate, build_prediction_samples
 
@@ -30,8 +32,8 @@ def pipeline(seed: int = 0xdeadbeef) -> Pipeline:
     )
 
 
-def main():
-    dataset = load()
+def main(data_path: Path):
+    dataset = load(data_path)
 
     train_txts = [
         sample.tweet_text
@@ -55,4 +57,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', "--data", dest="data", type=Path, required=True)
+    args = parser.parse_args()
+
+    main(data_path=args.data)
