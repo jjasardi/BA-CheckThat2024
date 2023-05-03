@@ -62,8 +62,9 @@ class TokenAlignmentDistance:
         with torch.no_grad():
             out = self.model(**tokens)
 
-        token_weights = F.normalize(self.idf[tokens['input_ids']], dim=-1, p=1)[0]
-        token_embeds = F.normalize(out.last_hidden_state, dim=-1, p=2)[0]
+        token_weights = self.idf[tokens['input_ids']][0]
+        token_weights /= token_weights.sum()
+        token_embeds = F.normalize(out.last_hidden_state[0], dim=-1, p=2)
 
         return token_weights, token_embeds
 
