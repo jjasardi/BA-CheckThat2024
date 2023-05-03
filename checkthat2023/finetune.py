@@ -123,6 +123,9 @@ def finetune(
         compute_metrics=compute_f1,
     )
     trainer.train()
-    trainer.evaluate(
-        eval_dataset=test,
+    print("DONE TRAINING")
+    res = trainer.predict(
+        test_dataset=test,
     )
+    print(res.metrics)
+
