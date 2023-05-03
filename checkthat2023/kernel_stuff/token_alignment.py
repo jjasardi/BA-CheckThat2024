@@ -69,16 +69,20 @@ class TokenAlignmentDistance:
         return token_weights, token_embeds
 
     @staticmethod
-    def __alignment_dist(w1, e1, w2, e2):
+    def __alignment_dist(w1, e1, w2, e2, decrease_precision: bool = False):
         sims = e1 @ e2.T
         cost = 1. - sims
-        ot_emd = ot.emd(w1, w2, cost)
+        if decrease_precision:
+            ot_emd = ot.emd(w1 / 100, w2 / 100, cost)
+        else:
+            ot_emd = ot.emd(w1, w2, cost)
         return (ot_emd * cost).sum()
 
     def distances(
         self,
         x: List[str],
         y: Optional[List[str]] = None,
+        decrease_precision: bool = False,
     ):
 
         x_weights = []
@@ -97,6 +101,7 @@ class TokenAlignmentDistance:
                         x_embeds[ix],
                         x_weights[jx],
                         x_embeds[jx],
+                        decrease_precision=decrease_precision,
                     )
                     dist_mat[ix, jx] = dist
                     dist_mat[jx, ix] = dist
@@ -115,6 +120,7 @@ class TokenAlignmentDistance:
                         x_embeds[ix],
                         y_weights[jx],
                         y_embeds[jx],
+                        decrease_precision=decrease_precision,
                     )
 
         return dist_mat
