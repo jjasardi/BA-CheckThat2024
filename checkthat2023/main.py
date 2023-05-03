@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from checkthat2023.tasks.task1a import load
-from checkthat2023.kernel_stuff.token_alignment import TokenAlignmentDistance
+from checkthat2023.finetune import finetune
 
 
 def main(config):
@@ -17,39 +17,13 @@ def main(config):
 
     task1a = load(data_folder=data_path, dev=config['dev'])
 
-    alignment_kernel = TokenAlignmentDistance()
-
-    d_train = alignment_kernel.distances(
-        x=[
-            s.tweet_text
-            for s in task1a.train
-        ],
+    finetune(
+        dataset=task1a,
+        base_model=config['base_model'],
+        output_dir=str(output_path / "hf_out"),
+        log_dir=str(output_path / "hf_log"),
+        dev_mode=config['dev'],
     )
-    torch.save(d_train, output_path / "train_dists.torch")
-
-    d_test = alignment_kernel.distances(
-        x=[
-            s.tweet_text
-            for s in task1a.dev_test
-        ],
-        y=[
-            s.tweet_text
-            for s in task1a.train
-        ],
-    )
-    torch.save(d_test, output_path / "test_dists.torch")
-
-    d_dev = alignment_kernel.distances(
-        x=[
-            s.tweet_text
-            for s in task1a.dev
-        ],
-        y=[
-            s.tweet_text
-            for s in task1a.train
-        ],
-    )
-    torch.save(d_dev, output_path / "dev_dists.torch")
 
 
 if __name__ == "__main__":

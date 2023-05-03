@@ -1,5 +1,6 @@
 {
   "data": "./data/",
   "output": "./output/",
-  "dev": true
+  "dev": true,
+  "base_model": "google/electra-small-discriminator"
 }
