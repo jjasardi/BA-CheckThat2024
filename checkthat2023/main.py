@@ -2,10 +2,8 @@
 import json
 from pathlib import Path
 
-import torch
-
 from checkthat2023.tasks.task1a import load
-from checkthat2023.finetune_text import finetune
+from checkthat2023.finetune_multi import finetune
 
 
 def main(config):
@@ -19,9 +17,10 @@ def main(config):
 
     finetune(
         dataset=task1a,
-        base_model=config['base_model'],
-        output_dir=str(output_path / "hf_out"),
-        log_dir=str(output_path / "hf_log"),
+        txt_model=config['txt_model'],
+        img_model=config['img_model'],
+        output_dir=output_path / "hf_out",
+        log_dir=output_path / "hf_log",
         dev_mode=config['dev'],
     )
 

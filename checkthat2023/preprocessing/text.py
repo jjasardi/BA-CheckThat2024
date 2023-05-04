@@ -7,6 +7,16 @@ from nltk.tokenize import TweetTokenizer
 from urlextract import URLExtract
 
 
+# copied from: https://huggingface.co/cardiffnlp/twitter-roberta-base
+def cardiffnlp_preprocess(text):
+    new_text = []
+    for t in text.split(" "):
+        t = '@user' if t.startswith('@') and len(t) > 1 else t
+        t = 'http' if t.startswith('http') else t
+        new_text.append(t)
+    return " ".join(new_text)
+
+
 class ReferenceTweetNormalizer(Callable[[str], str]):
     # official Tweet normalization provided by shared task organizers
     # from: https://gitlab.com/checkthat_lab/clef2023-checkthat-lab/-/blob/main/task1/baselines/TweetNormalizer.py

@@ -2,5 +2,6 @@
   "data": "./data/",
   "output": "./output/",
   "dev": true,
-  "base_model": "google/electra-small-discriminator"
+  "txt_model": "cardiffnlp/twitter-roberta-base",
+  "img_model": "google/vit-base-patch16-224-in21k"
 }
