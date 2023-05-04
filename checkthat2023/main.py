@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from checkthat2023.tasks.task1a import load
-from checkthat2023.finetune import finetune
+from checkthat2023.finetune_text import finetune
 
 
 def main(config):
