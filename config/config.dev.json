@@ -2,7 +2,13 @@
   "data": "./data/",
   "output": "./output/",
   "dev": true,
-  "txt_model": "cardiffnlp/twitter-roberta-base",
-  "img_model": "google/vit-base-patch16-224-in21k",
-  "finetune_base_models": false
+  "mode": "finetune_text",
+  "finetune_text": {
+    "base_model": "google/electra-small-discriminator"
+  },
+  "finetune_multi": {
+    "txt_model": "cardiffnlp/twitter-roberta-base",
+    "img_model": "google/vit-base-patch16-224-in21k",
+    "finetune_base_models": false
+  }
 }

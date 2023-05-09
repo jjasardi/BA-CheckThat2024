@@ -3,27 +3,30 @@ import json
 from pathlib import Path
 
 from checkthat2023.tasks.task1a import load
-from checkthat2023.finetune_multi import finetune
+from checkthat2023.finetune_multi import finetune as finetune_multi
+from checkthat2023.finetune_text import finetune as finetune_text
 
 
 def main(config):
     data_path = Path(config['data'])
     output_path = Path(config['output'])
+    mode = config['mode']
+    dev_mode = config['dev']
 
     if not output_path.exists():
         raise ValueError(f"path \"{output_path}\" does not exist")
 
-    task1a = load(data_folder=data_path, dev=config['dev'])
+    task1a = load(data_folder=data_path, dev=dev_mode)
 
-    finetune(
-        dataset=task1a,
-        txt_model=config['txt_model'],
-        img_model=config['img_model'],
-        output_dir=output_path / "hf_out",
-        log_dir=output_path / "hf_log",
-        finetune_base_models=config['finetune_base_models'],
-        dev_mode=config['dev'],
-    )
+    if mode == "finetune_text":
+        finetune_text(
+            dataset=task1a,
+            base_model=config['finetune_text']['base_model'],
+            output_dir=output_path,
+            dev_mode=dev_mode,
+        )
+    else:
+        raise ValueError(f"unknown experiment mode '{mode}'")
 
 
 if __name__ == "__main__":

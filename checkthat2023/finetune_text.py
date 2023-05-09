@@ -1,5 +1,6 @@
 
 from typing import List, Optional
+from pathlib import Path
 
 from transformers import (
     AutoModelForSequenceClassification,
@@ -11,11 +12,10 @@ from transformers import (
 import torch
 from torch.utils.data import Dataset as TDataset
 
-from sklearn.metrics import f1_score
-
 import numpy as np
 
 from checkthat2023.tasks.task1a import Task1A
+from checkthat2023.evaluation import hf_eval
 
 
 class TorchDataset(TDataset):
@@ -48,18 +48,10 @@ class TorchDataset(TDataset):
         return TorchDataset(torch_data)
 
 
-def compute_f1(eval_pred):
-    preds = np.argmax(eval_pred.predictions, axis=-1)
-    return {
-        "f1": f1_score(y_true=eval_pred.label_ids, y_pred=preds)
-    }
-
-
 def finetune(
     dataset: Task1A,
     base_model: str,
-    output_dir: str,
-    log_dir: str,
+    output_dir: Path,
     dev_mode: bool = False,
 ):
     tokenizer = AutoTokenizer.from_pretrained(base_model)
@@ -83,34 +75,23 @@ def finetune(
     ]
     x_test = [
         s.tweet_text
-        for s in dataset.dev_test
+        for s in dataset.test
     ]
-    y_test = [
-        s.class_label
-        for s in dataset.dev_test
-    ]
-
-    if dev_mode:
-        x_train = x_train[:256]
-        y_train = y_train[:256]
-        x_dev = x_dev[:256]
-        y_dev = y_dev[:256]
-        x_test = x_test[:256]
-        y_test = y_test[:256]
+    y_test = None
 
     train = TorchDataset.from_samples(x_train, y_train, tokenizer)
     dev = TorchDataset.from_samples(x_dev, y_dev, tokenizer)
     test = TorchDataset.from_samples(x_test, y_test, tokenizer)
 
     args = TrainingArguments(
-        output_dir=output_dir,
+        output_dir=str(output_dir),
         num_train_epochs=1 if dev_mode else 10,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=16,
         warmup_steps=500,
         weight_decay=.01,
         learning_rate=5e-5,
-        logging_dir=log_dir,
+        logging_dir=str(output_dir / "logs"),
         logging_steps=1000,
         evaluation_strategy="epoch",
         save_strategy="no",
@@ -121,12 +102,19 @@ def finetune(
         args=args,
         train_dataset=train,
         eval_dataset=dev,
-        compute_metrics=compute_f1,
+        compute_metrics=hf_eval,
     )
     trainer.train()
-    print("DONE TRAINING")
+
+    print("SAVING MODEL")
+    trainer.save_model(output_dir=str(output_dir / "text_model"))
+    tokenizer.save_pretrained(save_directory=str(output_dir / "text_model"))
+
+    print("GET PREDICTIONS")
     res = trainer.predict(
         test_dataset=test,
     )
-    print(res.metrics)
 
+    print("SAVE PREDICTED LOGITS")
+    with (output_dir / "text_model_test_logits.npy").open("wb") as fout:
+        np.save(file=fout, arr=res.predictions)
