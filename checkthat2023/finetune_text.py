@@ -1,5 +1,5 @@
 
-from typing import List
+from typing import List, Optional
 
 from transformers import (
     AutoModelForSequenceClassification,
@@ -27,7 +27,7 @@ class TorchDataset(TDataset):
         self.torch_data = torch_data
 
     def __len__(self) -> int:
-        return self.torch_data['labels'].shape[0]
+        return self.torch_data['input_ids'].shape[0]
 
     def __getitem__(self, idx: int) -> dict:
         return {
@@ -38,12 +38,13 @@ class TorchDataset(TDataset):
     @staticmethod
     def from_samples(
         texts: List[str],
-        labels: List[int],
+        labels: Optional[List[int]],
         tokenizer: AutoTokenizer,
     ) -> 'TorchDataset':
         torch_data = tokenizer(
             texts, truncation=True, padding=True, return_tensors="pt")
-        torch_data['labels'] = torch.LongTensor(labels)
+        if labels is not None:
+            torch_data['labels'] = torch.LongTensor(labels)
         return TorchDataset(torch_data)
 
 
