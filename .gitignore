@@ -1,5 +1,8 @@
 # artefacts
 output/
+data/
+data_old/
+cache/
 
 # PyCharm
 .idea/
