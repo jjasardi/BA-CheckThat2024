@@ -83,11 +83,13 @@ class MultiModalCrossAttention(nn.Module):
         txt_model: AutoModel,
         img_model: ViTModel,
         shared_proj_dim: int = 256,
+        finetune_base_models: bool = True,
     ):
         super().__init__()
         self.txt_model = txt_model
         self.img_model = img_model
         self.shared_proj_dim = shared_proj_dim
+        self.finetune_base_models = finetune_base_models
 
         self.txt2shared = nn.Linear(
             in_features=768,
@@ -123,9 +125,11 @@ class MultiModalCrossAttention(nn.Module):
         pixel_values: torch.tensor,
         labels: Optional[torch.LongTensor] = None,
     ):
-        txt_out = self.txt_model(
-            input_ids=input_ids, attention_mask=attention_mask)
-        img_out = self.img_model(pixel_values=pixel_values)
+
+        with torch.set_grad_enabled(self.finetune_base_models):
+            txt_out = self.txt_model(
+                input_ids=input_ids, attention_mask=attention_mask)
+            img_out = self.img_model(pixel_values=pixel_values)
 
         txt_proj = self.txt2shared(txt_out.last_hidden_state)
         img_proj = self.img2shared(img_out.last_hidden_state)
@@ -187,6 +191,7 @@ def finetune(
     img_model: str,
     output_dir: Path,
     log_dir: Path,
+    finetune_base_models: bool = True,
     dev_mode: bool = False,
 ):
     if "cardiffnlp" in txt_model:
@@ -222,6 +227,7 @@ def finetune(
     model = MultiModalCrossAttention(
         txt_model=txt_model,
         img_model=img_model,
+        finetune_base_models=finetune_base_models,
     )
 
     args = TrainingArguments(

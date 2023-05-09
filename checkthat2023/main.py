@@ -21,6 +21,7 @@ def main(config):
         img_model=config['img_model'],
         output_dir=output_path / "hf_out",
         log_dir=output_path / "hf_log",
+        finetune_base_models=config['finetune_base_models'],
         dev_mode=config['dev'],
     )
 
