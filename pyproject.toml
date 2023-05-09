@@ -21,6 +21,8 @@ tqdm = "^4.65.0"
 cvxopt = "1.3.0"
 mklpy = "^0.6"
 lmql = "^0.0.6.1"
+matplotlib = "^3.7.1"
+pyqt6 = "^6.5.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.1"
