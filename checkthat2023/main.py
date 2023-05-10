@@ -5,6 +5,7 @@ from pathlib import Path
 from checkthat2023.tasks.task1a import load
 from checkthat2023.finetune_multi import finetune as finetune_multi
 from checkthat2023.finetune_text import finetune as finetune_text
+from checkthat2023.electra_kernel import electra_sim
 
 
 def main(config):
@@ -24,6 +25,11 @@ def main(config):
             base_model=config['finetune_text']['base_model'],
             output_dir=output_path,
             dev_mode=dev_mode,
+        )
+    if mode == "electra_kernel":
+        electra_sim(
+            dataset=task1a,
+            output=output_path,
         )
     else:
         raise ValueError(f"unknown experiment mode '{mode}'")
