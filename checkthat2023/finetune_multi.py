@@ -14,21 +14,18 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 
 from PIL import Image
 
-import numpy as np
-
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 
-from sklearn.metrics import (
-    accuracy_score,
-    recall_score,
-    precision_score,
-    f1_score,
-)
+import numpy as np
+
+from tqdm import tqdm
 
 from checkthat2023.tasks.task1a import Task1A, Task1ASample
 from checkthat2023.preprocessing.text import cardiffnlp_preprocess
+from checkthat2023.evaluation import hf_eval
 
 
 class TorchDataset(Dataset):
@@ -37,7 +34,7 @@ class TorchDataset(Dataset):
         self.data = data
 
     def __len__(self) -> int:
-        return self.data['labels'].shape[0]
+        return self.data['input_ids'].shape[0]
 
     def __getitem__(self, ix: int) -> dict:
         return {
@@ -71,7 +68,10 @@ class TorchDataset(Dataset):
         pix_vals = torch.cat(pix_vals, dim=0)
 
         result['pixel_values'] = pix_vals
-        result['labels'] = torch.LongTensor([s.class_label for s in samples])
+
+        label_candidates = [s.class_label for s in samples]
+        if all(l is not None for l in label_candidates):
+            result['labels'] = torch.LongTensor([s.class_label for s in samples])
 
         return TorchDataset(result)
 
@@ -90,6 +90,8 @@ class MultiModalCrossAttention(nn.Module):
         self.img_model = img_model
         self.shared_proj_dim = shared_proj_dim
         self.finetune_base_models = finetune_base_models
+
+        self.relu = nn.ReLU()
 
         self.txt2shared = nn.Linear(
             in_features=768,
@@ -118,6 +120,31 @@ class MultiModalCrossAttention(nn.Module):
         )
         self.loss_fn = nn.CrossEntropyLoss()
 
+    def embedding(
+        self,
+        input_ids: torch.tensor,
+        attention_mask: torch.tensor,
+        pixel_values: torch.tensor,
+        **kwargs,
+    ):
+        with torch.set_grad_enabled(self.finetune_base_models):
+            txt_out = self.txt_model(
+                input_ids=input_ids, attention_mask=attention_mask)
+            img_out = self.img_model(pixel_values=pixel_values)
+
+        txt_proj = self.relu(self.txt2shared(txt_out.last_hidden_state))
+        img_proj = self.relu(self.img2shared(img_out.last_hidden_state))
+
+        shared = torch.cat([txt_proj, img_proj], dim=1)
+
+        encoded = self.relu(self.enc(shared))
+
+        mean_pooled = torch.mean(encoded, dim=1)
+
+        embed = F.normalize(mean_pooled, dim=-1, p=2)
+
+        return embed
+
     def forward(
         self,
         input_ids: torch.tensor,
@@ -126,21 +153,13 @@ class MultiModalCrossAttention(nn.Module):
         labels: Optional[torch.LongTensor] = None,
     ):
 
-        with torch.set_grad_enabled(self.finetune_base_models):
-            txt_out = self.txt_model(
-                input_ids=input_ids, attention_mask=attention_mask)
-            img_out = self.img_model(pixel_values=pixel_values)
+        embed = self.embedding(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            pixel_values=pixel_values,
+        )
 
-        txt_proj = self.txt2shared(txt_out.last_hidden_state)
-        img_proj = self.img2shared(img_out.last_hidden_state)
-
-        shared = torch.cat([txt_proj, img_proj], dim=1)
-
-        encoded = self.enc(shared)
-
-        pooled = torch.mean(encoded, dim=1)
-
-        logits = self.enc2logit(pooled)
+        logits = self.enc2logit(embed)
 
         if labels is None:
             loss = None
@@ -153,36 +172,44 @@ class MultiModalCrossAttention(nn.Module):
         )
 
 
-def compute_metrics(eval_pred):
-    y_pred = np.argmax(eval_pred.predictions, axis=-1)
-    y_true = eval_pred.label_ids
+def build_kernel(
+    train: TorchDataset,
+    dev: TorchDataset,
+    test: TorchDataset,
+    model: MultiModalCrossAttention,
+    output_dir: Path,
+):
+    model.cpu().eval()
 
-    acc = accuracy_score(y_true=y_true, y_pred=y_pred)
-    precision = precision_score(
-        y_true=y_true,
-        y_pred=y_pred,
-        pos_label=1,
-        average='binary',
-    )
-    recall = recall_score(
-        y_true=y_true,
-        y_pred=y_pred,
-        pos_label=1,
-        average='binary',
-    )
-    f1 = f1_score(
-        y_true=y_true,
-        y_pred=y_pred,
-        pos_label=1,
-        average='binary',
-    )
+    print("TRAIN EMBEDS")
+    train_embeds = []
+    with torch.no_grad():
+        for ix in tqdm(range(len(train))):
+            train_embeds.append(model.embedding(**train[ix:ix+1]))
+    train_embeds = torch.cat(train_embeds, dim=0)
 
-    return {
-        "accuracy": acc,
-        "precision": precision,
-        "recall": recall,
-        "f1": f1,
-    }
+    print("DEV EMBEDS")
+    dev_embeds = []
+    with torch.no_grad():
+        for ix in tqdm(range(len(dev))):
+            dev_embeds.append(model.embedding(**dev[ix:ix+1]))
+    dev_embeds = torch.cat(dev_embeds, dim=0)
+
+    print("TEST EMBEDS")
+    test_embeds = []
+    with torch.no_grad():
+        for ix in tqdm(range(len(test))):
+            test_embeds.append(model.embedding(**test[ix:ix+1]))
+    test_embeds = torch.cat(test_embeds, dim=0)
+
+    with torch.no_grad():
+        k_train = train_embeds @ train_embeds.T
+        k_dev = dev_embeds @ train_embeds.T
+        k_test = test_embeds @ train_embeds.T
+
+    torch.save(obj=k_train, f=output_dir / "train_multimodal_sim.torch")
+    torch.save(obj=k_dev, f=output_dir / "dev_multimodal_sim.torch")
+    torch.save(obj=k_test, f=output_dir / "test_multimodal_sim.torch")
 
 
 def finetune(
@@ -190,7 +217,6 @@ def finetune(
     txt_model: str,
     img_model: str,
     output_dir: Path,
-    log_dir: Path,
     finetune_base_models: bool = True,
     dev_mode: bool = False,
 ):
@@ -212,7 +238,7 @@ def finetune(
         txt_preprocess_fn=txt_preprocess_fn,
     )
     test = TorchDataset.from_samples(
-        samples=dataset.dev_test,
+        samples=dataset.test,
         tokenizer=tokenizer,
         img_processor=img_processor,
         txt_preprocess_fn=txt_preprocess_fn,
@@ -238,7 +264,7 @@ def finetune(
         warmup_steps=500,
         weight_decay=.01,
         learning_rate=5e-5,
-        logging_dir=str(log_dir),
+        logging_dir=str(output_dir / "logs"),
         logging_steps=1000,
         evaluation_strategy="epoch",
         save_strategy="no",
@@ -249,11 +275,23 @@ def finetune(
         args=args,
         train_dataset=train,
         eval_dataset=dev,
-        compute_metrics=compute_metrics,
+        compute_metrics=hf_eval,
     )
     trainer.train()
-    print("DONE TRAINING")
+
+    print("GET PREDICTIONS")
     res = trainer.predict(
         test_dataset=test,
     )
-    print(res.metrics)
+    print("SAVE PREDICTED LOGITS")
+    with (output_dir / "multimodal_test_logits.npy").open("wb") as fout:
+        np.save(file=fout, arr=res.predictions)
+
+    print("CREATE KERNEL")
+    build_kernel(
+        train=train,
+        dev=dev,
+        test=test,
+        model=model,
+        output_dir=output_dir,
+    )

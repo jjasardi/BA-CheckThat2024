@@ -27,6 +27,15 @@ def main(config):
             output_dir=output_path,
             dev_mode=dev_mode,
         )
+    elif mode == "finetune_multi":
+        finetune_multi(
+            dataset=task1a,
+            txt_model=config['finetune_multi']['txt_model'],
+            img_model=config['finetune_multi']['img_model'],
+            finetune_base_models=config['finetune_multi']['finetune_base_models'],
+            output_dir=output_path,
+            dev_mode=dev_mode,
+        )
     elif mode == "electra_kernel":
         electra_sim(
             dataset=task1a,

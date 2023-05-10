@@ -4,24 +4,32 @@ from pathlib import Path
 from checkthat2023.preprocessing.text import cardiffnlp_preprocess
 from checkthat2023.tasks.task1a import load
 
-from flair.data import Sentence
-from flair.embeddings import TransformerWordEmbeddings
+from transformers import (
+    AutoModel,
+    AutoTokenizer,
+    ViTImageProcessor,
+    ViTModel,
+)
 
 import torch
+
+from PIL import Image
 
 
 data_path = Path('data')
 
 task1a = load(data_folder=data_path, dev=True)
 
+txt_model = "cardiffnlp/twitter-roberta-base"
+img_model = "google/vit-base-patch16-224-in21k"
 
-embed = TransformerWordEmbeddings("cardiffnlp/twitter-roberta-base")
+tok = AutoTokenizer.from_pretrained(txt_model)
+img_proc = ViTImageProcessor.from_pretrained(img_model)
 
-s1 = Sentence(cardiffnlp_preprocess(task1a.train[0].tweet_text))
-s2 = Sentence(cardiffnlp_preprocess(task1a.test[1].tweet_text))
+from checkthat2023.finetune_multi import TorchDataset
 
-embed.embed(s1)
-embed.embed(s2)
-
-e1 = torch.stack([t.embedding for t in s1.tokens])
-e2 = torch.stack([t.embedding for t in s2.tokens])
+train = TorchDataset.from_samples(
+    samples=task1a.train,
+    tokenizer=tok,
+    img_processor=img_proc,
+)

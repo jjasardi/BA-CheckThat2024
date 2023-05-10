@@ -1,8 +1,8 @@
 {
   "data": "./data/",
-  "output": "./output/",
+  "output": "./garbage/",
   "dev": true,
-  "mode": "token_alignment_untrained",
+  "mode": "finetune_multi",
   "token_alignment_untrained": {
     "base_model": "cardiffnlp/twitter-roberta-base"
   },
