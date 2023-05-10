@@ -6,6 +6,7 @@ from checkthat2023.tasks.task1a import load
 from checkthat2023.finetune_multi import finetune as finetune_multi
 from checkthat2023.finetune_text import finetune as finetune_text
 from checkthat2023.electra_kernel import electra_sim
+from checkthat2023.token_alignment_untrained import token_alignment_untrained
 
 
 def main(config):
@@ -26,9 +27,15 @@ def main(config):
             output_dir=output_path,
             dev_mode=dev_mode,
         )
-    if mode == "electra_kernel":
+    elif mode == "electra_kernel":
         electra_sim(
             dataset=task1a,
+            output=output_path,
+        )
+    elif mode == "token_alignment_untrained":
+        token_alignment_untrained(
+            dataset=task1a,
+            base_model=config['token_alignment_untrained']['base_model'],
             output=output_path,
         )
     else:

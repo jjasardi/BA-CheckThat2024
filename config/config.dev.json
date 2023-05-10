@@ -2,7 +2,10 @@
   "data": "./data/",
   "output": "./output/",
   "dev": true,
-  "mode": "finetune_text",
+  "mode": "token_alignment_untrained",
+  "token_alignment_untrained": {
+    "base_model": "cardiffnlp/twitter-roberta-base"
+  },
   "finetune_text": {
     "base_model": "google/electra-small-discriminator"
   },

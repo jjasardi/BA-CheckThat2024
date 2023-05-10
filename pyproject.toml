@@ -23,6 +23,7 @@ mklpy = "^0.6"
 lmql = "^0.0.6.1"
 matplotlib = "^3.7.1"
 pyqt6 = "^6.5.0"
+flair = "^0.12.2"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.1"
