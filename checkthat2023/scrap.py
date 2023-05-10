@@ -1,35 +1,29 @@
 
+import json
 from pathlib import Path
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 from checkthat2023.preprocessing.text import cardiffnlp_preprocess
 from checkthat2023.tasks.task1a import load
 
-from transformers import (
-    AutoModel,
-    AutoTokenizer,
-    ViTImageProcessor,
-    ViTModel,
-)
 
-import torch
-
-from PIL import Image
-
+matplotlib.use('QtAgg')
 
 data_path = Path('data')
+gpt_cache = Path('cache/gpt-cache.json')
+electra_kernel = Path('kernel_data/electra')
 
-task1a = load(data_folder=data_path, dev=True)
+task1a = load(data_folder=data_path, dev=False)
 
-txt_model = "cardiffnlp/twitter-roberta-base"
-img_model = "google/vit-base-patch16-224-in21k"
+with gpt_cache.open('r') as fin:
+    gpt_data = json.load(fin)
 
-tok = AutoTokenizer.from_pretrained(txt_model)
-img_proc = ViTImageProcessor.from_pretrained(img_model)
+from checkthat2023.img_kernel_untrained import Embedder
 
-from checkthat2023.finetune_multi import TorchDataset
+e = Embedder()
 
-train = TorchDataset.from_samples(
-    samples=task1a.train,
-    tokenizer=tok,
-    img_processor=img_proc,
-)
+es = e.embeddings(task1a.train[:2])
