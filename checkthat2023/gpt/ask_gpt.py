@@ -3,7 +3,7 @@ import asyncio
 from pathlib import Path
 
 from checkthat2023.tasks.task1a import load
-from checkthat2023.gptcheck import GPTClf
+from checkthat2023.gpt.gptcheck import GPTClf
 
 data_path = Path('./data')
 secret_file = Path("/home/pius/work/dossma/prism_code/secrets/openai.json")
