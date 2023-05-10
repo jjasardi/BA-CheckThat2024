@@ -1,5 +1,5 @@
 
-from typing import Union, Optional
+from typing import Union, Optional, List
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,3 +37,27 @@ class KernelData:
                              f"when loading kernel from '{folder}'")
 
         return KernelData(**arg_dict)
+
+
+class KernelList:
+
+    def __init__(self, kernels: List[KernelData], name: str):
+        self.name = name
+        self.kernels = kernels
+        self.train_ = torch.stack([k.train for k in self.kernels], dim=-1)
+        self.dev_ = torch.stack([k.dev for k in self.kernels], dim=-1)
+        self.test_ = torch.stack([k.test for k in self.kernels], dim=-1)
+
+    def __weighted_avg(self, kern_mat, w: Optional[torch.tensor] = None):
+        if w is None:
+            w = torch.ones(len(self.kernels), dtype=self.train_.dtype) / len(self.kernels)
+        return kern_mat @ w
+
+    def train(self, w: Optional[torch.tensor] = None):
+        return self.__weighted_avg(self.train_, w)
+
+    def dev(self, w: Optional[torch.tensor] = None):
+        return self.__weighted_avg(self.dev_, w)
+
+    def test(self, w: Optional[torch.tensor] = None):
+        return self.__weighted_avg(self.test_, w)
