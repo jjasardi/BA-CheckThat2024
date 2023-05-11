@@ -7,6 +7,29 @@ import numpy as np
 import torch
 
 
+def _load(folder: Path) -> dict:
+    arg_dict = {
+        "name": folder.name
+    }
+
+    for p in folder.glob('*.torch'):
+        for split in ['train', 'test', 'dev']:
+            if p.name.startswith(split):
+                arg_dict[split] = torch.load(p)
+
+    missing = {
+        arg
+        for arg in ['train', 'test', 'dev', 'name']
+        if arg not in arg_dict.keys()
+    }
+
+    if len(missing) > 0:
+        raise ValueError(f"missing: '{missing}' "
+                         f"when loading kernel or dist data from '{folder}'")
+
+    return arg_dict
+
+
 @dataclass(frozen=True)
 class KernelData:
     train: Union[np.ndarray, torch.tensor]
@@ -16,27 +39,31 @@ class KernelData:
 
     @staticmethod
     def load_from(folder: Path) -> 'KernelData':
+        return KernelData(**_load(folder))
 
-        arg_dict = {
-            "name": folder.name
-        }
 
-        for p in folder.glob('*.torch'):
-            for split in ['train', 'test', 'dev']:
-                if p.name.startswith(split):
-                    arg_dict[split] = torch.load(p)
+def rbf(dists, gamma: float):
+    return torch.exp(-gamma*dists)
 
-        missing = {
-            arg
-            for arg in ['train', 'test', 'dev', 'name']
-            if arg not in arg_dict.keys()
-        }
 
-        if len(missing) > 0:
-            raise ValueError(f"missing: '{missing}' "
-                             f"when loading kernel from '{folder}'")
+@dataclass(frozen=True)
+class DistData:
+    train: Union[np.ndarray, torch.tensor]
+    dev: Union[np.ndarray, torch.tensor]
+    test: Union[np.ndarray, torch.tensor]
+    name: Optional[str] = None
 
-        return KernelData(**arg_dict)
+    @staticmethod
+    def load_from(folder: Path) -> 'DistData':
+        return DistData(**_load(folder))
+
+    def rbf(self, gamma: float) -> 'ḰernelData':
+        return KernelData(
+            train=rbf(self.train, gamma),
+            dev=rbf(self.dev, gamma),
+            test=rbf(self.test, gamma),
+            name=self.name,
+        )
 
 
 class KernelList:
