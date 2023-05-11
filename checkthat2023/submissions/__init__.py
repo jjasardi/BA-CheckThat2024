@@ -25,4 +25,5 @@ def create_submission(
             delimiter='\t',
             quoting=csv.QUOTE_MINIMAL,
         )
+        writer.writeheader()
         writer.writerows(map(asdict, sub_data))
