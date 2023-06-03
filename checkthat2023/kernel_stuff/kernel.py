@@ -88,3 +88,11 @@ class KernelList:
 
     def test(self, w: Optional[torch.tensor] = None):
         return self.__weighted_avg(self.test_, w)
+
+    def kernel_data(self, w: Optional[torch.tensor] = None):
+        return KernelData(
+            name=self.name,
+            train=self.train(w),
+            dev=self.dev(w),
+            test=self.test(w),
+        )
