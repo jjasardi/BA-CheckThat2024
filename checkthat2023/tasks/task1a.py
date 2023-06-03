@@ -55,6 +55,9 @@ def load(data_folder: Path, dev: bool = False) -> Task1A:
     for split in ["train", "dev", "dev_test", "test"]:
         data_file = data_folder / "task1A" /\
                     f"CT23_1A_checkworthy_multimodal_english_{split}.jsonl"
+        if split == "test":
+            data_file = data_folder / "task1A" /\
+                    "CT23_1A_checkworthy_multimodal_english_test_gold.jsonl"
         with data_file.open('r') as fin:
             raw = [json.loads(line.strip()) for line in fin]
 
