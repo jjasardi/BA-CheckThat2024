@@ -118,3 +118,22 @@ def finetune(
     print("SAVE PREDICTED LOGITS")
     with (output_dir / "text_model_test_logits.npy").open("wb") as fout:
         np.save(file=fout, arr=res.predictions)
+
+
+if __name__ == "__main__":
+    from checkthat2023.tasks.task1a import load
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("-d", "--data", dest="data_folder", type=Path, required=True)
+    parser.add_argument("-m", "--base-model", dest="base_model", type=str, required=True)
+    parser.add_argument("-o", "--output", dest="output_dir", type=Path, required=True)
+    parser.add_argument("--dev", dest="dev_mode", action="store_true")
+
+    args = parser.parse_args()
+
+    finetune(
+        dataset=load(data_folder=args.data_folder, dev=args.dev_mode),
+        base_model=args.base_model,
+        output_dir=args.output_dir,
+        dev_mode=args.dev_mode,
+    )
