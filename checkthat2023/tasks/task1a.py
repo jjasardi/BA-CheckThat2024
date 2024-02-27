@@ -58,7 +58,7 @@ def load(data_folder: Path, dev: bool = False) -> Task1A:
         if split == "test":
             data_file = data_folder / "task1A" /\
                     "CT23_1A_checkworthy_multimodal_english_test_gold.jsonl"
-        with data_file.open('r') as fin:
+        with data_file.open('r', encoding='utf-8') as fin:
             raw = [json.loads(line.strip()) for line in fin]
 
         args[split] = [
