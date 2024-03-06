@@ -110,6 +110,10 @@ def finetune(
     trainer.save_model(output_dir=str(output_dir / "text_model"))
     tokenizer.save_pretrained(save_directory=str(output_dir / "text_model"))
 
+    print("EVALUATING MODEL")
+    eval_result = trainer.evaluate(eval_dataset=dev)
+    print(eval_result)
+
     print("GET PREDICTIONS")
     res = trainer.predict(
         test_dataset=test,
