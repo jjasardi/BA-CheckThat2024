@@ -1,7 +1,7 @@
 
 from typing import List, Optional
 from dataclasses import dataclass
-import json
+import csv
 from pathlib import Path
 
 from checkthat2024.base import Sample
@@ -9,21 +9,12 @@ from checkthat2024.base import Sample
 
 @dataclass(frozen=True)
 class Task1ASample(Sample):
-    tweet_url: str
-    tweet_text: str
-    ocr_text: str
-    image_path: Path
-    image_url: str
-
+    text: str
+    
     @staticmethod
     def from_sample_dict(
-        tweet_id: str,
-        tweet_url: str,
-        tweet_text: str,
-        ocr_text: str,
-        image_path: str,
-        image_url: str,
-        data_folder: Path,
+        Sentence_id: str,
+        Text: str,
         class_label: Optional[str] = None,
     ) -> 'Task1ASample':
 
@@ -32,13 +23,9 @@ class Task1ASample(Sample):
                              f"received '{class_label}'")
 
         return Task1ASample(
-            id=tweet_id,
-            tweet_url=tweet_url,
-            tweet_text=tweet_text,
-            ocr_text=ocr_text,
+            id=Sentence_id,
+            text=Text,
             class_label=class_label == 'Yes' if class_label is not None else None,
-            image_path=data_folder / "task1A" / image_path,
-            image_url=image_url,
         )
 
 
@@ -52,17 +39,14 @@ class Task1A:
 def load(data_folder: Path, dev: bool = False) -> Task1A:
     args = {}
 
-    for split in ["train", "dev", "dev_test", "test"]:
-        data_file = data_folder / "task1A" /\
-                    f"CT23_1A_checkworthy_multimodal_english_{split}.jsonl"
-        if split == "test":
-            data_file = data_folder / "task1A" /\
-                    "CT23_1A_checkworthy_multimodal_english_test_gold.jsonl"
+    for split in ["train", "dev", "dev-test"]:
+        data_file = data_folder / "CT24_checkworthy_english" /\
+                    f"CT24_checkworthy_english_{split}.tsv"
         with data_file.open('r', encoding='utf-8') as fin:
-            raw = [json.loads(line.strip()) for line in fin]
+            raw = list(csv.DictReader(fin, delimiter='\t'))
 
         args[split] = [
-            Task1ASample.from_sample_dict(**d, data_folder=data_folder)
+            Task1ASample.from_sample_dict(**d)
             for d in raw
         ]
 
@@ -74,6 +58,6 @@ def load(data_folder: Path, dev: bool = False) -> Task1A:
 
     return Task1A(
         train=args['train'],
-        dev=args['dev'] + args['dev_test'],
-        test=args['test'],
+        dev=args['dev'],
+        test=args['dev-test'],
     )

@@ -15,6 +15,7 @@ from torch.utils.data import Dataset as TDataset
 import numpy as np
 
 from checkthat2024.task1a import Task1A
+from checkthat2024.eval import hf_eval
 
 
 class TorchDataset(TDataset):
@@ -57,7 +58,7 @@ def finetune(
     model = AutoModelForSequenceClassification.from_pretrained(base_model)
 
     x_train = [
-        s.tweet_text
+        s.text
         for s in dataset.train
     ]
     y_train = [
@@ -65,7 +66,7 @@ def finetune(
         for s in dataset.train
     ]
     x_dev = [
-        s.tweet_text
+        s.text
         for s in dataset.dev
     ]
     y_dev = [
@@ -73,7 +74,7 @@ def finetune(
         for s in dataset.dev
     ]
     x_test = [
-        s.tweet_text
+        s.text
         for s in dataset.test
     ]
     y_test = None
@@ -101,6 +102,7 @@ def finetune(
         args=args,
         train_dataset=train,
         eval_dataset=dev,
+        compute_metrics=hf_eval,
     )
     trainer.train()
 
