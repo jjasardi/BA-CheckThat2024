@@ -1,6 +1,7 @@
 
 from typing import List, Optional
 from pathlib import Path
+import datetime
 
 from transformers import (
     AutoModelForSequenceClassification,
@@ -54,6 +55,9 @@ def finetune(
     output_dir: Path,
     dev_mode: bool = False,
 ):
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = output_dir / f"model_{current_time}"
+
     tokenizer = AutoTokenizer.from_pretrained(base_model)
     model = AutoModelForSequenceClassification.from_pretrained(base_model)
 
@@ -97,7 +101,7 @@ def finetune(
         logging_dir=str(output_dir / "logs"),
         logging_steps=1000,
         evaluation_strategy="epoch",
-        save_strategy="no",
+        save_strategy="epoch",
     )
 
     trainer = Trainer(
