@@ -77,7 +77,10 @@ def finetune(
         s.text
         for s in dataset.test
     ]
-    y_test = None
+    y_test = [
+        s.class_label if hasattr(s, 'class_label') else None
+        for s in dataset.dev
+    ]
 
     train = TorchDataset.from_samples(x_train, y_train, tokenizer)
     dev = TorchDataset.from_samples(x_dev, y_dev, tokenizer)
@@ -118,6 +121,9 @@ def finetune(
     res = trainer.predict(
         test_dataset=test,
     )
+
+    print("SCORE ON TEST DATASET")
+    print(res.metrics)
 
     print("SAVE PREDICTED LOGITS")
     with (output_dir / "text_model_test_logits.npy").open("wb") as fout:
