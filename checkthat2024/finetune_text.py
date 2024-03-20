@@ -83,7 +83,7 @@ def finetune(
     ]
     y_test = [
         s.class_label if hasattr(s, 'class_label') else None
-        for s in dataset.dev
+        for s in dataset.test
     ]
 
     train = TorchDataset.from_samples(x_train, y_train, tokenizer)
