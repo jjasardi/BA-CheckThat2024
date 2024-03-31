@@ -77,7 +77,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logits = np.load(args.logits_file)
-    print(logits)
     dataset = load(data_folder=args.data_folder, dev=args.dev_mode)
     x_test = [s.text for s in dataset.test]
     y_test = [s.class_label for s in dataset.test]
