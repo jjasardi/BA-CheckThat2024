@@ -18,6 +18,10 @@ import numpy as np
 from checkthat2023.tasks.task1a import Task1A
 from checkthat2023.evaluation import hf_eval
 
+import wandb
+import os
+os.environ["WANDB_PROJECT"]="ba24-check-worthiness-estimation"
+os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 
 class TorchDataset(TDataset):
 
@@ -99,9 +103,10 @@ def finetune(
         weight_decay=.01,
         learning_rate=5e-5,
         logging_dir=str(output_dir / "logs"),
-        logging_steps=1000,
-        evaluation_strategy="epoch",
+        logging_steps=100,
+        evaluation_strategy="steps",
         save_strategy="epoch",
+        report_to="wandb",
     )
 
     trainer = Trainer(
@@ -124,6 +129,7 @@ def finetune(
 
     print("SCORE ON TEST DATASET")
     print(res.metrics)
+    wandb.log({"test": res.metrics})
 
     print("SAVE PREDICTED LOGITS")
     with (output_dir / "text_model_test_logits.npy").open("wb") as fout:
