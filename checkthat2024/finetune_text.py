@@ -21,7 +21,7 @@ from checkthat2024.eval import hf_eval
 import wandb
 import os
 os.environ["WANDB_PROJECT"]="ba24-check-worthiness-estimation"
-os.environ["WANDB_LOG_MODEL"] = "checkpoint"
+os.environ["WANDB_LOG_MODEL"] = "end"
 
 class TorchDataset(TDataset):
 
@@ -59,8 +59,9 @@ def finetune(
     output_dir: Path,
     dev_mode: bool = False,
 ):
+    os.environ["WANDB_RUN_GROUP"] = base_model
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = output_dir / f"model_{current_time}"    
+    output_dir = output_dir / f"model_{current_time}"
 
     tokenizer = AutoTokenizer.from_pretrained(base_model)
     model = AutoModelForSequenceClassification.from_pretrained(base_model)
@@ -105,8 +106,13 @@ def finetune(
         logging_dir=str(output_dir / "logs"),
         logging_steps=100,
         evaluation_strategy="steps",
-        save_strategy="epoch",
+        save_strategy="steps",
+        save_steps=400,
+        save_total_limit=3,
+        load_best_model_at_end=True,
+        metric_for_best_model="f1",
         report_to="wandb",
+        run_name=f"{base_model}-{output_dir.name}",
     )
 
     trainer = Trainer(
