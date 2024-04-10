@@ -59,7 +59,8 @@ def finetune(
     output_dir: Path,
     dev_mode: bool = False,
 ):
-    os.environ["WANDB_RUN_GROUP"] = base_model
+    model_name = base_model.replace("/", "-")
+    os.environ["WANDB_RUN_GROUP"] = model_name
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = output_dir / f"model_{current_time}"
 
@@ -112,7 +113,7 @@ def finetune(
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         report_to="wandb",
-        run_name=f"{base_model}-{output_dir.name}",
+        run_name=f"{model_name}-{output_dir.name}",
     )
 
     trainer = Trainer(
