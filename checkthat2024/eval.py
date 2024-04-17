@@ -9,6 +9,7 @@ import numpy as np
 import torch
 from torch.nn import CrossEntropyLoss
 from sklearn.metrics import PrecisionRecallDisplay
+import matplotlib.pyplot as plt
 import wandb
 
 
@@ -63,28 +64,18 @@ def misclassified_samples(x_test, y_test, logits, model_names):
             )
 
 
-def compute_precision_recall(y_test, logits):
-    y_test = np.array(y_test, dtype=int)
-    logits_tensor = torch.tensor(logits)
-    probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1]
-    display = PrecisionRecallDisplay.from_predictions(y_test, probs)
-    return display
-
-
 def precision_recall_plot(y_test, logits, model_names):
     wandb.init(project="ba24-check-worthiness-estimation", group="general-plots", name="precision_recall_plot")
-
-    combined_display = PrecisionRecallDisplay()
+    _, ax = plt.subplots()
 
     for logits, model_name in zip(logits, model_names):
-        display = compute_precision_recall(y_test, logits)
-        display.name = model_name
-        combined_display.append_display(display)
+        y_test = np.array(y_test, dtype=int)
+        logits_tensor = torch.tensor(logits)
+        probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1]
+        PrecisionRecallDisplay.from_predictions(y_test, probs, name=model_name, ax=ax)
 
-    _ = combined_display.plot(ax=display.ax_)
-    _ = display.ax_.set_title("Precision-Recall curves")
-
-    wandb.log({"Precision-Recall Curve)": wandb.Image(display.figure_)})
+    plt.title('Precision-Recall curves')
+    wandb.log({"Precision-Recall Curve)": wandb.Image(plt)})
 
 
 def compute_losses(logits, y_test):
