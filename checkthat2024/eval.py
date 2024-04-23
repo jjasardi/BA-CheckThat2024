@@ -12,6 +12,9 @@ from sklearn.metrics import PrecisionRecallDisplay
 from sklearn.calibration import CalibrationDisplay
 import matplotlib.pyplot as plt
 import wandb
+from scipy.stats import pearsonr
+import pandas as pd
+import seaborn as sns
 
 
 def hf_eval(eval_pred):
@@ -84,9 +87,46 @@ def probability_calibration_plot(y_test, logits, model_names):
         y_test = np.array(y_test, dtype=int)
         logits_tensor = torch.tensor(logits)
         probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1]
-        CalibrationDisplay.from_predictions(y_test, probs, name=model_name, ax=ax)
+        CalibrationDisplay.from_predictions(y_test, probs, name=model_name, ax=ax, n_bins=7)
     plt.title('Probability calibration curves')
     wandb.log({"Probability calibration plot": wandb.Image(plt)})
+
+def models_outputs_correlation_matrix(logits):
+    models_probs = [torch.nn.Softmax(dim=1)(torch.tensor(logit)) for logit in logits]
+    correlation_matrix = np.zeros((len(models_probs), len(models_probs)))
+    for i in range(len(models_probs)):
+        for j in range(len(models_probs)):
+            correlation_matrix[i, j] = pearsonr(models_probs[i][:, 1], models_probs[j][:, 1])[0]
+
+    return correlation_matrix
+
+def models_disagreement_matrix(logits):
+    predicted_labels = [np.argmax(logit, axis=1) for logit in logits]
+    num_models = len(predicted_labels)
+    num_samples = predicted_labels[0].shape[0]
+
+    disagreement_matrix = np.zeros((num_models, num_models))
+
+    for i in range(num_models):
+        for j in range(i + 1, num_models):
+            disagreement_count = np.sum(predicted_labels[i] != predicted_labels[j])
+            disagreement_matrix[i, j] = disagreement_count
+            disagreement_matrix[j, i] = disagreement_count
+
+    # Compute disagreement fraction
+    disagreement_fraction_matrix = disagreement_matrix / num_samples
+
+    return disagreement_fraction_matrix
+
+def visualize_matrix(matrix, model_names, plot_name):
+    df = pd.DataFrame(matrix, index=model_names, columns=model_names)
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(df, annot=True, cmap='coolwarm', fmt=".2f")
+    plt.title(plot_name)
+    plt.xlabel('Model')
+    plt.ylabel('Model')
+    wandb.log({plot_name: wandb.Image(plt)})
 
 
 def compute_losses(logits, y_test):
@@ -124,4 +164,11 @@ if __name__ == "__main__":
 
     precision_recall_plot(y_test, logits, args.model_names)
 
-    probability_calibration_plot(y_test, logits, args.model_names)
+    # probability_calibration_plot(y_test, logits, args.model_names)
+
+    correlation_matrix = models_outputs_correlation_matrix(logits)
+    visualize_matrix(correlation_matrix, args.model_names, "Correlation of model predictions")
+    
+    disagreement_matrix = models_disagreement_matrix(logits)
+    visualize_matrix(disagreement_matrix, args.model_names, "Disagreement of model predictions")
+    
