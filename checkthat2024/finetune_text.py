@@ -57,11 +57,13 @@ def finetune(
     dataset: Task1A,
     base_model: str,
     output_dir: Path,
-    shuffled: bool = False,
+    data_folder: str,
     dev_mode: bool = False,
 ):
     model_name = base_model.replace("/", "-")
-    os.environ["WANDB_RUN_GROUP"] = f"shuffled-{model_name}" if shuffled else model_name
+    os.environ["WANDB_RUN_GROUP"] = f"{model_name}-{data_folder}"
+    wandb.config.data_folder = data_folder
+    wandb.config.model = base_model
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = output_dir / f"model_{current_time}"
 
@@ -114,7 +116,7 @@ def finetune(
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         report_to="wandb",
-        run_name=f"shuffled-{model_name}-{output_dir.name}" if shuffled else f"{model_name}-{output_dir.name}",
+        run_name=f"{model_name}-{output_dir.name}",
     )
 
     trainer = Trainer(
@@ -163,6 +165,6 @@ if __name__ == "__main__":
         dataset=load(data_folder=args.data_folder, dev=args.dev_mode),
         base_model=args.base_model,
         output_dir=args.output_dir,
-        shuffled=args.data_folder.name == "data_s",
+        data_folder=args.data_folder.name,
         dev_mode=args.dev_mode,
     )
