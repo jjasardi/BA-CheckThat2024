@@ -62,7 +62,7 @@ def finetune(
 ):
     model_name = base_model.replace("/", "-")
     os.environ["WANDB_RUN_GROUP"] = f"{model_name}-{data_folder}"
-    wandb.config.data_folder = data_folder
+    wandb.config.data = data_folder
     wandb.config.model = base_model
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = output_dir / f"model_{current_time}"
