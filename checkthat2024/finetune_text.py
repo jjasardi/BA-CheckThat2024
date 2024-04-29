@@ -60,12 +60,15 @@ def finetune(
     data_folder: str,
     dev_mode: bool = False,
 ):
-    model_name = base_model.replace("/", "-")
-    os.environ["WANDB_RUN_GROUP"] = f"{model_name}_{data_folder}"
-    wandb.config.data = data_folder
-    wandb.config.model = model_name
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = output_dir / f"model_{current_time}"
+    model_name = base_model.replace("/", "-")
+    config = {"data": data_folder, "model": model_name}
+    wandb.init(
+        name=f"{model_name}-{output_dir.name}",
+        group=f"{model_name}-{data_folder}",
+        config=config,
+    )
 
     tokenizer = AutoTokenizer.from_pretrained(base_model)
     model = AutoModelForSequenceClassification.from_pretrained(base_model)
@@ -116,7 +119,6 @@ def finetune(
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         report_to="wandb",
-        run_name=f"{model_name}_{output_dir.name}",
     )
 
     trainer = Trainer(
