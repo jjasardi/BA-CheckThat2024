@@ -23,7 +23,7 @@ import wandb
 
 def ensemble(
     dataset: Task1A,
-    models_names: list[str],
+    model_names: list[str],
     voting: str='hard',
 ):
     x_test = [
@@ -36,7 +36,7 @@ def ensemble(
         ]
 
     all_predictions = []
-    for i, model_name in enumerate(models_names):
+    for i, model_name in enumerate(model_names):
         model = AutoModelForSequenceClassification.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
         tokenizer = AutoTokenizer.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
         
@@ -56,7 +56,14 @@ def ensemble(
         "test_accuracy": accuracy_score(y_test, majority_vote),
         }
         wandb.log({"test": metrics})
-    
+
+    potential = 0
+    for i in range(len(y_test)):
+        for prediction in all_predictions:
+            if np.argmax(prediction[i]) == y_test[i]:
+                potential += 1
+                break
+    wandb.log({"potential": potential})
 
 
 
@@ -66,15 +73,14 @@ if __name__ == "__main__":
     import sys
     from checkthat2024.eval import models_disagreement_matrix, visualize_matrix
 
-
     parser = ArgumentParser()
     parser.add_argument("-d", "--data", dest="data_folder", type=Path, required=True)
-    parser.add_argument("-l", "--models", dest="models", nargs="+", type=str, required=True)
+    parser.add_argument("-l", "--models", dest="model_names", nargs="+", type=str, required=True)
     parser.add_argument("-v", "--voting", dest="voting", type=str, required=False)
     parser.add_argument("-n", "--model-labels", dest="model_labels", nargs="+", required=False)
 
     args = parser.parse_args()
-    if len(args.models) < 2:
+    if len(args.model_names) < 2:
         print("please provide more than one model")
         sys.exit()
 
@@ -88,13 +94,13 @@ if __name__ == "__main__":
     )
     ensemble(
         dataset=load(data_folder=args.data_folder),
-        models_names=args.models,
+        model_names=args.model_names,
         voting=args.voting,
     )
 
-    if len(args.model_labels) == len(args.models):
+    if len(args.model_labels) == len(args.model_names):
         logits = []
-        for model in args.models:
+        for model in args.model_names:
             logits.append(np.load("./model_dump/CT_24/" + model + "/text_model_test_logits.npy"))
         disagreement_matrix = models_disagreement_matrix(logits)
         visualize_matrix(disagreement_matrix, args.model_labels, "Disagreement of model predictions")

@@ -16,6 +16,13 @@ from scipy.stats import pearsonr
 import pandas as pd
 import seaborn as sns
 
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    Trainer,
+)
+
+from dataset_utils import TorchDataset
 
 def hf_eval(eval_pred):
     y_pred = np.argmax(eval_pred.predictions, axis=-1)
@@ -49,8 +56,8 @@ def hf_eval(eval_pred):
     }
 
 
-def misclassified_samples(x_test, y_test, logits, model_names):
-    for logits, model_name in zip(logits, model_names):
+def misclassified_samples(x_test, y_test, logits, model_labels):
+    for logits, model_label in zip(logits, model_labels):
         predicted_labels = np.argmax(logits, axis=1)
         losses = compute_losses(logits, y_test)
 
@@ -61,33 +68,33 @@ def misclassified_samples(x_test, y_test, logits, model_names):
         ]
         misclassified_samples.sort(key=lambda x: x[3], reverse=True)
 
-        print(model_name)
+        print(model_label)
         for text, predicted_label, ground_truth_label, loss in misclassified_samples:
             print(
                 f"{text}, Predicted Label = {predicted_label}, Ground Truth Label = {ground_truth_label}, loss = {loss}"
             )
 
 
-def precision_recall_plot(y_test, logits, model_names):
+def precision_recall_plot(y_test, logits, model_labels):
     _, ax = plt.subplots()
 
-    for logits, model_name in zip(logits, model_names):
+    for logits, model_label in zip(logits, model_labels):
         y_test = np.array(y_test, dtype=int)
         logits_tensor = torch.tensor(logits)
         probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1]
-        PrecisionRecallDisplay.from_predictions(y_test, probs, name=model_name, ax=ax)
+        PrecisionRecallDisplay.from_predictions(y_test, probs, name=model_label, ax=ax)
 
     plt.title('Precision-Recall curves')
     wandb.log({"Precision-Recall plot": wandb.Image(plt)})
 
 
-def probability_calibration_plot(y_test, logits, model_names):
+def probability_calibration_plot(y_test, logits, model_labels):
     _, ax = plt.subplots()
-    for logits, model_name in zip(logits, model_names):
+    for logits, model_label in zip(logits, model_labels):
         y_test = np.array(y_test, dtype=int)
         logits_tensor = torch.tensor(logits)
         probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1]
-        CalibrationDisplay.from_predictions(y_test, probs, name=model_name, ax=ax, n_bins=7)
+        CalibrationDisplay.from_predictions(y_test, probs, name=model_label, ax=ax, n_bins=7)
     plt.title('Probability calibration curves')
     wandb.log({"Probability calibration plot": wandb.Image(plt)})
 
@@ -118,8 +125,42 @@ def models_disagreement_matrix(logits):
 
     return disagreement_fraction_matrix
 
-def visualize_matrix(matrix, model_names, plot_name):
-    df = pd.DataFrame(matrix, index=model_names, columns=model_names)
+def mean_pairwise_disagreement(disagreement_fraction_matrix):
+    num_models = disagreement_fraction_matrix.shape[0]
+    total_disagreement = np.sum(disagreement_fraction_matrix)
+    # Subtract diagonal elements (self-disagreements) from total
+    total_disagreement -= np.sum(np.diag(disagreement_fraction_matrix))
+    # Divide by number of pairs (combinations of 2 models)
+    mean_disagreement = total_disagreement / (num_models * (num_models - 1))
+    return mean_disagreement
+
+def f1_for_thresholds(logits, y, model_labels, data_label):
+    thresholds = np.arange(0.1, 0.95, 0.05)
+    for logits, model_label in zip(logits, model_labels):
+        y = np.array(y, dtype=int)
+        logits_tensor = torch.tensor(logits)
+        probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1].numpy()
+
+        print(f"Model: {model_label}, data: {data_label}")
+        table = wandb.Table(columns=["Threshold", "F1_score"])
+        for threshold in thresholds:
+            predicted_labels = (probs >= threshold).astype(int)
+            f1 = f1_score(y, predicted_labels)
+            print(f"Threshold: {threshold:.2f}, F1 Score: {f1:.4f}")
+            table.add_data(threshold, f1)
+        wandb.log({f"{model_label}_{data_label}": table})
+
+def get_predictions(model_name):
+    model = AutoModelForSequenceClassification.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
+    tokenizer = AutoTokenizer.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
+
+    test = TorchDataset.from_samples(x_test, y_test, tokenizer)
+    trainer = Trainer(model=model)
+    predictions = trainer.predict(test_dataset=test).predictions
+    return predictions
+
+def visualize_matrix(matrix, model_labels, plot_name):
+    df = pd.DataFrame(matrix, index=model_labels, columns=model_labels)
 
     plt.figure(figsize=(10, 8))
     sns.heatmap(df, annot=True, cmap='coolwarm', fmt=".2f")
@@ -143,12 +184,13 @@ if __name__ == "__main__":
     from checkthat2024.task1a import load
     from argparse import ArgumentParser
     from pathlib import Path
+    import os
 
     parser = ArgumentParser()
     parser.add_argument("-d", "--data", dest="data_folder", type=Path, required=True)
     parser.add_argument("--dev", dest="dev_mode", action="store_true")
     parser.add_argument("-l", "--logits", dest="logits_files", nargs="+", type=str, required=True)
-    parser.add_argument("-n", "--model-names", dest="model_names", nargs="+", required=True)
+    parser.add_argument("-n", "--model-labels", dest="model_labels", nargs="+", required=True)
     args = parser.parse_args()
 
     logits = []
@@ -158,17 +200,29 @@ if __name__ == "__main__":
     x_test = [s.text for s in dataset.test]
     y_test = [s.class_label for s in dataset.test]
 
-    misclassified_samples = misclassified_samples(x_test, y_test, logits, args.model_names)
+    misclassified_samples = misclassified_samples(x_test, y_test, logits, args.model_labels)
 
-    wandb.init(project="ba24-check-worthiness-estimation", group="general-plots", name="general-plots")
+    wandb.init(project="ba24-check-worthiness-estimation", group="general-plots", name="general-plots", config={"data":args.data_folder.name})
 
-    precision_recall_plot(y_test, logits, args.model_names)
+    precision_recall_plot(y_test, logits, args.model_labels)
 
-    # probability_calibration_plot(y_test, logits, args.model_names)
+    # probability_calibration_plot(y_test, logits, args.model_labels)
 
     correlation_matrix = models_outputs_correlation_matrix(logits)
-    visualize_matrix(correlation_matrix, args.model_names, "Correlation of model predictions")
-    
+    visualize_matrix(correlation_matrix, args.model_labels, "Correlation of model predictions")
+
     disagreement_matrix = models_disagreement_matrix(logits)
-    visualize_matrix(disagreement_matrix, args.model_names, "Disagreement of model predictions")
-    
+    visualize_matrix(disagreement_matrix, args.model_labels, "Disagreement of model predictions")
+
+    model_names = []
+    for file in args.logits_files:
+        model_name = os.path.basename(os.path.dirname(file))
+        model_names.append(model_name)
+
+
+    y_dev = [s.class_label for s in dataset.dev]
+    f1_for_thresholds(logits, y_test, args.model_labels, "y_test")
+    logits_dev = []
+    for model_name in model_names:
+        logits_dev.append(get_predictions(model_name))
+    f1_for_thresholds(logits, y_dev, args.model_labels, "y_dev")
