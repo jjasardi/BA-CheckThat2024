@@ -64,22 +64,25 @@ if __name__ == "__main__":
     from checkthat2024.task1a import load
     from argparse import ArgumentParser
     import sys
+    from checkthat2024.eval import models_disagreement_matrix, visualize_matrix
+
 
     parser = ArgumentParser()
     parser.add_argument("-d", "--data", dest="data_folder", type=Path, required=True)
     parser.add_argument("-l", "--models", dest="models", nargs="+", type=str, required=True)
     parser.add_argument("-v", "--voting", dest="voting", type=str, required=False)
+    parser.add_argument("-n", "--model-labels", dest="model_labels", nargs="+", required=False)
 
     args = parser.parse_args()
     if len(args.models) < 2:
         print("please provide more than one model")
         sys.exit()
 
-    model = f"ensemble-{'-'.join(args.models)}"
+    model = "ensemble"
     config = {"data": args.data_folder, "model": model, "voting": args.voting}
 
     wandb.init(
-        name="ensemble",
+        name=f"ensemble-{'-'.join(args.models)}",
         group=f"ensemble-{args.data_folder}",
         config=config,
     )
@@ -88,3 +91,10 @@ if __name__ == "__main__":
         models_names=args.models,
         voting=args.voting,
     )
+
+    if len(args.model_labels) == len(args.models):
+        logits = []
+        for model in args.models:
+            logits.append(np.load("./model_dump/CT_24/" + model + "/text_model_test_logits.npy"))
+        disagreement_matrix = models_disagreement_matrix(logits)
+        visualize_matrix(disagreement_matrix, args.model_labels, "Disagreement of model predictions")

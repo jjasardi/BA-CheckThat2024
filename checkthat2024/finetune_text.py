@@ -8,6 +8,7 @@ from transformers import (
     AutoTokenizer,
     TrainingArguments,
     Trainer,
+    EarlyStoppingCallback,
 )
 
 import torch
@@ -115,7 +116,7 @@ def finetune(
         evaluation_strategy="steps",
         save_strategy="steps",
         save_steps=400,
-        save_total_limit=3,
+        save_total_limit=2,
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         report_to="wandb",
