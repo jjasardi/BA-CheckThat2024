@@ -135,7 +135,7 @@ def mean_pairwise_disagreement(disagreement_fraction_matrix):
     return mean_disagreement
 
 def f1_for_thresholds(logits, y, model_labels, data_label):
-    thresholds = np.arange(0.1, 0.95, 0.05)
+    thresholds = np.arange(0.05, 1, 0.05)
     for logits, model_label in zip(logits, model_labels):
         y = np.array(y, dtype=int)
         logits_tensor = torch.tensor(logits)
@@ -225,4 +225,4 @@ if __name__ == "__main__":
     logits_dev = []
     for model_name in model_names:
         logits_dev.append(get_predictions(model_name))
-    f1_for_thresholds(logits, y_dev, args.model_labels, "y_dev")
+    f1_for_thresholds(logits_dev, y_dev, args.model_labels, "y_dev")
