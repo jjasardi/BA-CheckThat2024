@@ -11,7 +11,7 @@ from transformers import (
     Trainer,
 )
 
-from checkthat2024.finetune_text import TorchDataset
+from checkthat2024.dataset_utils import TorchDataset
 
 from checkthat2024.task1a import Task1A, load
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     config = {"data": args.data_folder, "model": model, "voting": args.voting}
 
     wandb.init(
-        name=f"ensemble-{'-'.join(args.models)}",
+        name=f"ensemble-{'-'.join(args.model_names)}",
         group=f"ensemble-{args.data_folder}",
         config=config,
     )

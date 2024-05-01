@@ -11,7 +11,7 @@ from transformers import (
     EarlyStoppingCallback,
 )
 
-from dataset_utils import TorchDataset
+from checkthat2024.dataset_utils import TorchDataset
 
 import numpy as np
 

@@ -22,7 +22,7 @@ from transformers import (
     Trainer,
 )
 
-from dataset_utils import TorchDataset
+from checkthat2024.dataset_utils import TorchDataset
 
 def hf_eval(eval_pred):
     y_pred = np.argmax(eval_pred.predictions, axis=-1)
@@ -150,11 +150,11 @@ def f1_for_thresholds(logits, y, model_labels, data_label):
             table.add_data(threshold, f1)
         wandb.log({f"{model_label}_{data_label}": table})
 
-def get_predictions(model_name):
+def get_predictions(model_name, x, y):
     model = AutoModelForSequenceClassification.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
     tokenizer = AutoTokenizer.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
 
-    test = TorchDataset.from_samples(x_test, y_test, tokenizer)
+    test = TorchDataset.from_samples(x, y, tokenizer)
     trainer = Trainer(model=model)
     predictions = trainer.predict(test_dataset=test).predictions
     return predictions
@@ -219,10 +219,10 @@ if __name__ == "__main__":
         model_name = os.path.basename(os.path.dirname(file))
         model_names.append(model_name)
 
-
+    x_dev = [s.text for s in dataset.dev]
     y_dev = [s.class_label for s in dataset.dev]
     f1_for_thresholds(logits, y_test, args.model_labels, "y_test")
     logits_dev = []
     for model_name in model_names:
-        logits_dev.append(get_predictions(model_name))
+        logits_dev.append(get_predictions(model_name, x_dev, y_test))
     f1_for_thresholds(logits_dev, y_dev, args.model_labels, "y_dev")
