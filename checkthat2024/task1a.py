@@ -34,12 +34,17 @@ class Task1A:
     train: List[Task1ASample]
     dev: List[Task1ASample]
     test: List[Task1ASample]
+    test_gold: List[Task1ASample]
 
 
-def load(data_folder: Path, dev: bool = False) -> Task1A:
+def load(data_folder: Path, dev: bool = False, gold: bool = False) -> Task1A:
     args = {}
 
-    for split in ["train", "dev", "dev-test"]:
+    splits = ["train", "dev", "dev-test"]
+    if gold:
+        splits.append("test")
+
+    for split in splits:
         data_file = data_folder / "CT24_checkworthy_english" /\
                     f"CT24_checkworthy_english_{split}.tsv"
         with data_file.open('r', encoding='utf-8') as fin:
@@ -60,4 +65,5 @@ def load(data_folder: Path, dev: bool = False) -> Task1A:
         train=args['train'],
         dev=args['dev'],
         test=args['dev-test'],
+        test_gold=args['test'] if gold else None
     )
