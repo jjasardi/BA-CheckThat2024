@@ -135,18 +135,22 @@ def mean_pairwise_disagreement(disagreement_fraction_matrix):
     return mean_disagreement
 
 def f1_for_thresholds(logits, y, model_labels, data_label):
-    thresholds = np.arange(0.05, 1, 0.05)
     for logits, model_label in zip(logits, model_labels):
         y = np.array(y, dtype=int)
         logits_tensor = torch.tensor(logits)
         probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1].numpy()
+
+
+        percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+        thresholds = np.percentile(probs, percentiles)
+        print("Probability percentiles:", percentiles)
 
         print(f"Model: {model_label}, data: {data_label}")
         table = wandb.Table(columns=["Threshold", "F1_score"])
         for threshold in thresholds:
             predicted_labels = (probs >= threshold).astype(int)
             f1 = f1_score(y, predicted_labels)
-            print(f"Threshold: {threshold:.2f}, F1 Score: {f1:.4f}")
+            print(f"Threshold: {threshold:.8f}, F1 Score: {f1}")
             table.add_data(threshold, f1)
         wandb.log({f"{model_label}_{data_label}": table})
 
@@ -202,7 +206,7 @@ if __name__ == "__main__":
 
     misclassified_samples = misclassified_samples(x_test, y_test, logits, args.model_labels)
 
-    wandb.init(project="ba24-check-worthiness-estimation", group="general-plots", name="general-plots", config={"data":args.data_folder.name})
+    wandb.init(project="ba24-check-worthiness-estimation", mode="disabled", group="general-plots", name="general-plots", config={"data":args.data_folder.name})
 
     precision_recall_plot(y_test, logits, args.model_labels)
 
@@ -221,8 +225,9 @@ if __name__ == "__main__":
 
     x_dev = [s.text for s in dataset.dev]
     y_dev = [s.class_label for s in dataset.dev]
-    f1_for_thresholds(logits, y_test, args.model_labels, "y_test")
     logits_dev = []
     for model_name in model_names:
-        logits_dev.append(get_predictions(model_name, x_dev, y_test))
+        logits_dev.append(get_predictions(model_name, x_dev, y_dev))
     f1_for_thresholds(logits_dev, y_dev, args.model_labels, "y_dev")
+
+    f1_for_thresholds(logits, y_test, args.model_labels, "y_test")
