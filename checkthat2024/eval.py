@@ -15,6 +15,7 @@ import wandb
 from scipy.stats import pearsonr
 import pandas as pd
 import seaborn as sns
+import random
 
 from transformers import (
     AutoModelForSequenceClassification,
@@ -23,6 +24,7 @@ from transformers import (
 )
 
 from checkthat2024.dataset_utils import TorchDataset
+from checkthat2024.calibration import PlattScaling
 
 def hf_eval(eval_pred):
     y_pred = np.argmax(eval_pred.predictions, axis=-1)
@@ -134,25 +136,42 @@ def mean_pairwise_disagreement(disagreement_fraction_matrix):
     mean_disagreement = total_disagreement / (num_models * (num_models - 1))
     return mean_disagreement
 
-def f1_for_thresholds(logits, y, model_labels, data_label):
+def f1_for_thresholds(logits, y, model_labels, data_label, fitted_calibration):
     for logits, model_label in zip(logits, model_labels):
         y = np.array(y, dtype=int)
         logits_tensor = torch.tensor(logits)
         probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1].numpy()
 
+        calibrated_probs = fitted_calibration.transform(probs)
 
         percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90]
-        thresholds = np.percentile(probs, percentiles)
+        thresholds = np.percentile(calibrated_probs, percentiles)
         print("Probability percentiles:", percentiles)
 
         print(f"Model: {model_label}, data: {data_label}")
         table = wandb.Table(columns=["Threshold", "F1_score"])
         for threshold in thresholds:
-            predicted_labels = (probs >= threshold).astype(int)
+            predicted_labels = (calibrated_probs >= threshold).astype(int)
             f1 = f1_score(y, predicted_labels)
             print(f"Threshold: {threshold:.8f}, F1 Score: {f1}")
             table.add_data(threshold, f1)
         wandb.log({f"{model_label}_{data_label}": table})
+
+def get_fitted_calibration_method(dataset, model_name):
+    random_indices = random.sample(range(len(dataset.train)), 100)
+    x_train = []
+    y_train = []
+    for index in random_indices:
+        x_train.append(dataset.train[index].text)
+        y_train.append(dataset.train[index].class_label)
+
+    predictions = get_predictions(model_name, x_train, y_train)
+    predictions = torch.tensor(predictions)
+    probs_yes_class = torch.nn.Softmax(dim=1)(predictions)[:, 1].numpy()
+
+    calibration_method = PlattScaling()
+    calibration_method.fit(probs_yes_class, y_train)
+    return calibration_method
 
 def get_predictions(model_name, x, y):
     model = AutoModelForSequenceClassification.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
@@ -223,11 +242,13 @@ if __name__ == "__main__":
         model_name = os.path.basename(os.path.dirname(file))
         model_names.append(model_name)
 
+    fitted_calibration = get_fitted_calibration_method(dataset, model_name)
+
     x_dev = [s.text for s in dataset.dev]
     y_dev = [s.class_label for s in dataset.dev]
     logits_dev = []
     for model_name in model_names:
         logits_dev.append(get_predictions(model_name, x_dev, y_dev))
-    f1_for_thresholds(logits_dev, y_dev, args.model_labels, "y_dev")
+    f1_for_thresholds(logits_dev, y_dev, args.model_labels, "y_dev", fitted_calibration)
 
-    f1_for_thresholds(logits, y_test, args.model_labels, "y_test")
+    f1_for_thresholds(logits, y_test, args.model_labels, "y_test", fitted_calibration)
