@@ -1,0 +1,51 @@
+\newabbreviation
+{plm}
+{PLM}{Pre-trained Language Model}
+
+\newabbreviation
+{nlu}
+{NLU}{natural language understanding}
+
+\newabbreviation
+{osn}
+{OSN}{Online Social Network}
+
+\newabbreviation
+{nlp}
+{NLP}{Natural Language Processing}
+
+\newabbreviation
+{ml}
+{ML}{Machine Learning}
+
+\newabbreviation
+{svm}
+{SVM}{Support Vector Machine}
+
+\newabbreviation
+{tf-idf}
+{TF-IDF}{Term Frequency-Inverse Document Frequency}
+
+\newabbreviation
+{nfs}
+{NFS}{Non-factual Statement}
+
+\newabbreviation
+{ufs}
+{UFS}{Unimportant Factual Statement}
+
+\newabbreviation
+{cfs}
+{CFS}{Check-worthy Factual Statement}
+
+\newabbreviation
+{mlm}
+{MLM}{Masked Language Modeling}
+
+\newabbreviation
+{nsp}
+{NSP}{Next Sentence Prediction}
+
+\newabbreviation
+{rtd}
+{RTD}{Replaced Token Detection}
