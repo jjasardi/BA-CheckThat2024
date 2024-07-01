@@ -20,7 +20,6 @@ from checkthat2024.eval import hf_eval
 
 import wandb
 import os
-os.environ["WANDB_PROJECT"]="ba24-check-worthiness-estimation"
 os.environ["WANDB_LOG_MODEL"] = "end"
 
 
@@ -36,6 +35,7 @@ def finetune(
     model_name = base_model.replace("/", "-")
     config = {"data": data_folder, "model": model_name}
     wandb.init(
+        project="ba24-check-worthiness-estimation",
         name=f"{model_name}-{output_dir.name}",
         group=f"{model_name}-{data_folder}",
         config=config,
@@ -85,8 +85,8 @@ def finetune(
         logging_steps=100,
         evaluation_strategy="steps",
         save_strategy="steps",
-        save_steps=400,
-        save_total_limit=2,
+        save_steps=100,
+        save_total_limit=1,
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         report_to="wandb",

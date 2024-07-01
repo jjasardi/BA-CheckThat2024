@@ -2,10 +2,15 @@ from eval import get_predictions
 import numpy as np
 import csv
 import time
+from ensemble import ensemble
 
-def creae_submission_file(ids, predictions, model_label):
+def creae_submission_file(ids, predictions, model_label, is_ensemble):
     class_labels = ["No", "Yes"]
-    predicted_labels = [class_labels[idx] for idx in np.argmax(predictions, axis=1)]
+    if is_ensemble:
+        print(predictions)
+        predicted_labels = [class_labels[idx] for idx in predictions]
+    else:
+        predicted_labels = [class_labels[idx] for idx in np.argmax(predictions, axis=1)]
 
     rows = []
     for i, sentence_id in enumerate(ids):
@@ -33,12 +38,20 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("-d", "--data", dest="data_folder", type=Path, required=True)
-    parser.add_argument("-l", "--model", dest="model_name", type=str, required=True)
+    parser.add_argument("-l", "--model", dest="model_names", nargs="+", type=str, required=True)
     parser.add_argument("-n", "--model-label", dest="model_label", required=True)
     args = parser.parse_args()
 
     dataset = load(data_folder=args.data_folder, gold=True)
     x_test_gold = [s.text for s in dataset.test_gold]
     sentence_ids = [s.id for s in dataset.test_gold]
-    predictions = get_predictions(model_name=args.model_name, x=x_test_gold, y=None)
-    creae_submission_file(ids=sentence_ids, predictions=predictions, model_label=args.model_label)
+    if len(args.model_names) > 1:
+        predictions = ensemble(
+            dataset=dataset,
+            model_names=args.model_names,
+        )
+        is_ensemble = True
+    else:
+        predictions = get_predictions(model_name=args.model_names[0], x=x_test_gold, y=None)
+        is_ensemble = False
+    creae_submission_file(ids=sentence_ids, predictions=predictions, model_label=args.model_label, is_ensemble=is_ensemble)

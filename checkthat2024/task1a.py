@@ -42,7 +42,7 @@ def load(data_folder: Path, dev: bool = False, gold: bool = False) -> Task1A:
 
     splits = ["train", "dev", "dev-test"]
     if gold:
-        splits.append("test")
+        splits.append("test_gold")
 
     for split in splits:
         data_file = data_folder / "CT24_checkworthy_english" /\
@@ -65,5 +65,5 @@ def load(data_folder: Path, dev: bool = False, gold: bool = False) -> Task1A:
         train=args['train'],
         dev=args['dev'],
         test=args['dev-test'],
-        test_gold=args['test'] if gold else None
+        test_gold=args['test_gold'] if gold else None
     )

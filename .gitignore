@@ -3,6 +3,7 @@ output/
 data/
 data_old/
 cache/
+model_dump/
 
 # PyCharm
 .idea/

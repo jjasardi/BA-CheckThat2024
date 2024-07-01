@@ -5,6 +5,7 @@ from sklearn.metrics import (
     f1_score,
 )
 
+from scipy import stats
 import numpy as np
 import torch
 from torch.nn import CrossEntropyLoss
@@ -16,6 +17,7 @@ from scipy.stats import pearsonr
 import pandas as pd
 import seaborn as sns
 import random
+from itertools import combinations
 
 from transformers import (
     AutoModelForSequenceClassification,
@@ -25,6 +27,7 @@ from transformers import (
 
 from checkthat2024.dataset_utils import TorchDataset
 from checkthat2024.calibration import PlattScaling
+from checkthat2024.calibration import Isotonic
 
 def hf_eval(eval_pred):
     y_pred = np.argmax(eval_pred.predictions, axis=-1)
@@ -90,13 +93,14 @@ def precision_recall_plot(y_test, logits, model_labels):
     wandb.log({"Precision-Recall plot": wandb.Image(plt)})
 
 
-def probability_calibration_plot(y_test, logits, model_labels):
+def probability_calibration_plot(y_test, logits, model_labels, fitted_calibration):
     _, ax = plt.subplots()
     for logits, model_label in zip(logits, model_labels):
         y_test = np.array(y_test, dtype=int)
         logits_tensor = torch.tensor(logits)
         probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1]
-        CalibrationDisplay.from_predictions(y_test, probs, name=model_label, ax=ax, n_bins=7)
+        probs = fitted_calibration.transform(probs)
+        CalibrationDisplay.from_predictions(y_test, probs, name=model_label, ax=ax, n_bins=5)
     plt.title('Probability calibration curves')
     wandb.log({"Probability calibration plot": wandb.Image(plt)})
 
@@ -124,17 +128,116 @@ def models_disagreement_matrix(logits):
 
     # Compute disagreement fraction
     disagreement_fraction_matrix = disagreement_matrix / num_samples
-
+    m_pairwise_disagreement = mean_pairwise_disagreement(disagreement_fraction_matrix, list(range(num_models)))
+    wandb.log({"mean_pairwise_disagreement": m_pairwise_disagreement})
     return disagreement_fraction_matrix
 
-def mean_pairwise_disagreement(disagreement_fraction_matrix):
-    num_models = disagreement_fraction_matrix.shape[0]
-    total_disagreement = np.sum(disagreement_fraction_matrix)
-    # Subtract diagonal elements (self-disagreements) from total
-    total_disagreement -= np.sum(np.diag(disagreement_fraction_matrix))
-    # Divide by number of pairs (combinations of 2 models)
-    mean_disagreement = total_disagreement / (num_models * (num_models - 1))
-    return mean_disagreement
+def models_normalized_disagreement_matrix(logits, y_test):
+    predicted_labels = [np.argmax(logit, axis=1) for logit in logits]
+    num_models = len(predicted_labels)
+    num_samples = predicted_labels[0].shape[0]
+
+    disagreement_matrix = np.zeros((num_models, num_models))
+
+    for i in range(num_models):
+        for j in range(i + 1, num_models):
+            disagreement_count = np.sum(predicted_labels[i] != predicted_labels[j])
+            disagreement_fraction = disagreement_count / num_samples
+            majority_vote = stats.mode([predicted_labels[i], predicted_labels[j]], keepdims=False)[0]
+            accuracy = accuracy_score(y_test, majority_vote)
+            normalized_disagreement = disagreement_fraction / (1 - accuracy)
+
+            disagreement_matrix[i, j] = normalized_disagreement
+            disagreement_matrix[j, i] = normalized_disagreement
+
+    m_pairwise_disagreement = mean_pairwise_disagreement(disagreement_matrix, list(range(num_models)))
+    wandb.log({"mean_pairwise_normalized_disagreement": m_pairwise_disagreement})
+    return disagreement_matrix
+
+
+def double_fault_measure_matrix(logits, y_test):
+    predicted_labels = [np.argmax(logit, axis=1) for logit in logits]
+    num_models = len(predicted_labels)
+    num_samples = predicted_labels[0].shape[0]
+
+    double_fault_matrix = np.zeros((num_models, num_models))
+
+    for i in range(num_models):
+        for j in range(i + 1, num_models):
+            both_incorrect = np.logical_and(predicted_labels[i] != y_test, predicted_labels[j] != y_test)
+            double_fault_fraction = np.sum(both_incorrect) / num_samples
+
+            double_fault_matrix[i, j] = double_fault_fraction
+            double_fault_matrix[j, i] = double_fault_fraction
+
+    m_pairwise_double_fault = mean_pairwise_disagreement(double_fault_matrix, list(range(num_models)))
+    wandb.log({"mean_pairwise_double_fault_measure": m_pairwise_double_fault})
+    return double_fault_matrix
+
+
+def mean_pairwise_disagreement(disagreement_matrix, model_indices):
+    """
+    Calculate the mean pairwise disagreement for a given set of model indices.
+
+    :param disagreement_matrix: A 2D numpy array representing the disagreement fractions between models.
+    :param model_indices: A list of indices representing the models in the group.
+    :return: The mean pairwise disagreement for the given set of models.
+    """
+    pairwise_disagreements = []
+    for (i, j) in combinations(model_indices, 2):
+        pairwise_disagreements.append(disagreement_matrix[i, j])
+    m_pairwise_disagreement = np.mean(pairwise_disagreements)
+    return m_pairwise_disagreement
+
+def compute_metrics(logits, y_test, model_combination):
+    # Extract the predictions for the models in the combination
+    all_predictions = [logits[model_idx] for model_idx in model_combination]
+    # Get the predicted labels by majority voting
+    all_predicted_labels = [np.argmax(prediction, axis=1) for prediction in all_predictions]
+    majority_vote = stats.mode(all_predicted_labels, axis=0, keepdims=False)[0]
+    
+    # Compute evaluation metrics
+    accuracy = accuracy_score(y_test, majority_vote)
+    precision = precision_score(y_test, majority_vote)
+    recall = recall_score(y_test, majority_vote)
+    f1 = f1_score(y_test, majority_vote)
+    return accuracy, precision, recall, f1
+
+
+def get_all_combinations_with_disagreement(disagreement_matrix, logits, y_test):
+    """
+    Generate a list of all possible combinations of models with their mean pairwise disagreement,
+    and compute the evaluation metrics for the top 10 and last 10 combinations.
+
+    :param disagreement_matrix: A 2D numpy array representing the disagreement fractions between models.
+    :param logits: A list of numpy arrays representing the logits from each model.
+    :param y_test: A numpy array representing the true labels.
+    :return: A list of tuples, each containing a combination of models, their mean pairwise disagreement,
+             and their evaluation metrics (accuracy, precision, recall, F1 score).
+    """
+    num_models = disagreement_matrix.shape[0]
+    all_combinations = []
+
+    for r in range(3, num_models + 1, 2):  # Only consider combinations with an odd number of models
+        for model_combination in combinations(range(num_models), r):
+            mean_disagreement = mean_pairwise_disagreement(disagreement_matrix, model_combination)
+            accuracy, precision, recall, f1 = compute_metrics(logits, y_test, model_combination)
+            all_combinations.append((model_combination, mean_disagreement, accuracy, precision, recall, f1))
+
+    #Sort the combinations by mean pairwise disagreement in descending order
+    all_combinations.sort(key=lambda x: x[1], reverse=True)
+
+    #top_10 = all_combinations[:10]
+    #bottom_10 = all_combinations[-10:]
+
+    # Compute evaluation metrics for top 10 and bottom 10 combinations
+    #results = []
+    #for combination in top_10 + bottom_10:
+    #    model_combination, mean_disagreement = combination
+    #    accuracy, precision, recall, f1 = compute_metrics(logits, y_test, model_combination)
+    #    results.append((model_combination, mean_disagreement, accuracy, precision, recall, f1))
+
+    return all_combinations
 
 def f1_for_thresholds(logits, y, model_labels, data_label, fitted_calibration):
     for logits, model_label in zip(logits, model_labels):
@@ -146,7 +249,6 @@ def f1_for_thresholds(logits, y, model_labels, data_label, fitted_calibration):
 
         percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90]
         thresholds = np.percentile(calibrated_probs, percentiles)
-        print("Probability percentiles:", percentiles)
 
         print(f"Model: {model_label}, data: {data_label}")
         table = wandb.Table(columns=["Threshold", "F1_score"])
@@ -155,7 +257,7 @@ def f1_for_thresholds(logits, y, model_labels, data_label, fitted_calibration):
             f1 = f1_score(y, predicted_labels)
             print(f"Threshold: {threshold:.8f}, F1 Score: {f1}")
             table.add_data(threshold, f1)
-        wandb.log({f"{model_label}_{data_label}": table})
+        #wandb.log({f"{model_label}_{data_label}": table})
 
 def get_fitted_calibration_method(dataset, model_name):
     random_indices = random.sample(range(len(dataset.train)), 100)
@@ -169,27 +271,28 @@ def get_fitted_calibration_method(dataset, model_name):
     predictions = torch.tensor(predictions)
     probs_yes_class = torch.nn.Softmax(dim=1)(predictions)[:, 1].numpy()
 
-    calibration_method = PlattScaling()
+    calibration_method = Isotonic()
     calibration_method.fit(probs_yes_class, y_train)
     return calibration_method
 
 def get_predictions(model_name, x, y):
     model = AutoModelForSequenceClassification.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
     tokenizer = AutoTokenizer.from_pretrained("./model_dump/CT_24/" + model_name + "/text_model")
-
     test = TorchDataset.from_samples(x, y, tokenizer)
     trainer = Trainer(model=model)
-    predictions = trainer.predict(test_dataset=test).predictions
+    predictions, _, metrics = trainer.predict(test_dataset=test)
+    print(metrics)
     return predictions
 
 def visualize_matrix(matrix, model_labels, plot_name):
     df = pd.DataFrame(matrix, index=model_labels, columns=model_labels)
-
+    print(matrix)
     plt.figure(figsize=(10, 8))
-    sns.heatmap(df, annot=True, cmap='coolwarm', fmt=".2f")
+    sns.heatmap(df, annot=True, cmap='coolwarm', fmt=".3f")
     plt.title(plot_name)
     plt.xlabel('Model')
     plt.ylabel('Model')
+    plt.tight_layout()
     wandb.log({plot_name: wandb.Image(plt)})
 
 
@@ -223,19 +326,25 @@ if __name__ == "__main__":
     x_test = [s.text for s in dataset.test]
     y_test = [s.class_label for s in dataset.test]
 
+    #model_names = []
+    #for file in args.logits_files:
+    #    model_name = os.path.basename(os.path.dirname(file))
+    #    model_names.append(model_name)
+    #predictions = get_predictions(model_names[0], x_test, y_test)
+    #print(f1_score(y_test, np.argmax(predictions, axis=1)))
+
     misclassified_samples = misclassified_samples(x_test, y_test, logits, args.model_labels)
 
-    wandb.init(project="ba24-check-worthiness-estimation", mode="disabled", group="general-plots", name="general-plots", config={"data":args.data_folder.name})
+    wandb.init(project="ba24-check-worthiness-estimation", mode="open", group="general-plots", name="general-plots", config={"data":args.data_folder.name})
 
     precision_recall_plot(y_test, logits, args.model_labels)
 
-    # probability_calibration_plot(y_test, logits, args.model_labels)
+    if len(args.logits_files) > 2:
+        correlation_matrix = models_outputs_correlation_matrix(logits)
+        visualize_matrix(correlation_matrix, args.model_labels, "Correlation of model predictions")
 
-    correlation_matrix = models_outputs_correlation_matrix(logits)
-    visualize_matrix(correlation_matrix, args.model_labels, "Correlation of model predictions")
-
-    disagreement_matrix = models_disagreement_matrix(logits)
-    visualize_matrix(disagreement_matrix, args.model_labels, "Disagreement of model predictions")
+        disagreement_matrix = models_disagreement_matrix(logits)
+        visualize_matrix(disagreement_matrix, args.model_labels, "Disagreement of model predictions")
 
     model_names = []
     for file in args.logits_files:
@@ -252,3 +361,6 @@ if __name__ == "__main__":
     f1_for_thresholds(logits_dev, y_dev, args.model_labels, "y_dev", fitted_calibration)
 
     f1_for_thresholds(logits, y_test, args.model_labels, "y_test", fitted_calibration)
+
+    probability_calibration_plot(y_test, logits, args.model_labels, fitted_calibration)
+
