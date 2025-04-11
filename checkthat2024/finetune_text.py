@@ -8,65 +8,44 @@ from transformers import (
     AutoTokenizer,
     TrainingArguments,
     Trainer,
+    EarlyStoppingCallback,
 )
 
-import torch
-from torch.utils.data import Dataset as TDataset
+from checkthat2024.dataset_utils import TorchDataset
 
 import numpy as np
 
-from checkthat2023.tasks.task1a import Task1A
-from checkthat2023.evaluation import hf_eval
+from checkthat2024.task1a import Task1A
+from checkthat2024.eval import hf_eval
 
 import wandb
 import os
 os.environ["WANDB_PROJECT"]="ba24-check-worthiness-estimation"
-os.environ["WANDB_LOG_MODEL"] = "checkpoint"
-
-class TorchDataset(TDataset):
-
-    def __init__(
-        self,
-        torch_data: dict
-    ):
-        self.torch_data = torch_data
-
-    def __len__(self) -> int:
-        return self.torch_data['input_ids'].shape[0]
-
-    def __getitem__(self, idx: int) -> dict:
-        return {
-            k: v[idx]
-            for k, v in self.torch_data.items()
-        }
-
-    @staticmethod
-    def from_samples(
-        texts: List[str],
-        labels: Optional[List[int]],
-        tokenizer: AutoTokenizer,
-    ) -> 'TorchDataset':
-        torch_data = tokenizer(
-            texts, truncation=True, padding=True, return_tensors="pt")
-        if labels is not None:
-            torch_data['labels'] = torch.LongTensor(labels)
-        return TorchDataset(torch_data)
+os.environ["WANDB_LOG_MODEL"] = "end"
 
 
 def finetune(
     dataset: Task1A,
     base_model: str,
     output_dir: Path,
+    data_folder: str,
     dev_mode: bool = False,
 ):
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = output_dir / f"model_{current_time}"
+    model_name = base_model.replace("/", "-")
+    config = {"data": data_folder, "model": model_name}
+    wandb.init(
+        name=f"{model_name}-{output_dir.name}",
+        group=f"{model_name}-{data_folder}",
+        config=config,
+    )
 
     tokenizer = AutoTokenizer.from_pretrained(base_model)
     model = AutoModelForSequenceClassification.from_pretrained(base_model)
 
     x_train = [
-        s.tweet_text
+        s.text
         for s in dataset.train
     ]
     y_train = [
@@ -74,7 +53,7 @@ def finetune(
         for s in dataset.train
     ]
     x_dev = [
-        s.tweet_text
+        s.text
         for s in dataset.dev
     ]
     y_dev = [
@@ -82,7 +61,7 @@ def finetune(
         for s in dataset.dev
     ]
     x_test = [
-        s.tweet_text
+        s.text
         for s in dataset.test
     ]
     y_test = [
@@ -105,7 +84,11 @@ def finetune(
         logging_dir=str(output_dir / "logs"),
         logging_steps=100,
         evaluation_strategy="steps",
-        save_strategy="epoch",
+        save_strategy="steps",
+        save_steps=400,
+        save_total_limit=2,
+        load_best_model_at_end=True,
+        metric_for_best_model="f1",
         report_to="wandb",
     )
 
@@ -122,6 +105,10 @@ def finetune(
     trainer.save_model(output_dir=str(output_dir / "text_model"))
     tokenizer.save_pretrained(save_directory=str(output_dir / "text_model"))
 
+    print("EVALUATING MODEL")
+    eval_result = trainer.evaluate(eval_dataset=dev)
+    print(eval_result)
+
     print("GET PREDICTIONS")
     res = trainer.predict(
         test_dataset=test,
@@ -137,7 +124,7 @@ def finetune(
 
 
 if __name__ == "__main__":
-    from checkthat2023.tasks.task1a import load
+    from checkthat2024.task1a import load
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("-d", "--data", dest="data_folder", type=Path, required=True)
@@ -151,5 +138,6 @@ if __name__ == "__main__":
         dataset=load(data_folder=args.data_folder, dev=args.dev_mode),
         base_model=args.base_model,
         output_dir=args.output_dir,
+        data_folder=args.data_folder.name,
         dev_mode=args.dev_mode,
     )

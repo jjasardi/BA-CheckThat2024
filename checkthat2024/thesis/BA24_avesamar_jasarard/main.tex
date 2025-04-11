@@ -1,0 +1,96 @@
+\documentclass[10pt]{article}
+
+\makeatletter
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
+            {-2.5ex\@plus -1ex \@minus -.25ex}%
+            {1.25ex \@plus .25ex}%
+            {\normalfont\normalsize\bfseries}}
+\makeatother
+
+\usepackage[utf8]{inputenc}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{pdfpages} 
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{csquotes}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{svg}
+\usepackage{todonotes}
+\usepackage{pifont}
+\usepackage{pgf}
+\usepackage{tikz}
+% \usepackage{fontspec}
+
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+\newcommand*{\fullref}[1]{\hyperref[{#1}]{\ref*{#1} \nameref*{#1}}}
+\crefformat{footnote}{#2\footnotemark[#1]#3}
+
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+\usepackage{todonotes}
+
+% citations & glossary
+\usepackage[style=ieee,backend=biber]{biblatex}
+\usepackage[numberedsection]{glossaries-extra}
+\addbibresource{./pa.bib}
+\makenoidxglossaries
+\loadglsentries{glossary.gls}
+
+% formatting
+\topmargin -1cm 
+\textheight 22cm
+\textwidth 16.0 cm 
+\oddsidemargin -0.1cm
+
+\parindent=0pt
+\setlength{\parskip}{12pt}
+\linespread{1.2}
+
+%table of content depth
+\setcounter{tocdepth}{3}
+
+\pagestyle{fancy}
+\fancyhead[L]{\textbf{Bachelor thesis} - Misinformation detection}
+\fancyhead[R]{ZHAW - School of Engineering}
+
+% handmade Keywords
+\def\code#1{\texttt{#1}}
+\patchcmd{\listoffigures}{\section*}{\section}{}{}
+\patchcmd{\listoftables}{\section*}{\section}{}{}
+
+\begin{document}
+\begin{titlepage}
+\includepdf[fitpaper=true, noautoscale=true, scale=0.9]{assets/pa_title.pdf}
+\end{titlepage}
+
+\input{chapters/00a_declaration_of_originality}
+\input{chapters/00b_abstract}
+\input{chapters/00c_preface}
+
+\newpage
+\tableofcontents
+\thispagestyle{empty}
+\newpage
+
+% chapters
+\pagenumbering{arabic}
+\input{chapters/01_introduction}
+\input{chapters/02_theory}
+\input{chapters/03_methods}
+\input{chapters/04_results}
+\input{chapters/05_discussion}
+\input{chapters/06_lists}
+\input{chapters/07_annex}
+
+\clearpage
+
+\end{document}

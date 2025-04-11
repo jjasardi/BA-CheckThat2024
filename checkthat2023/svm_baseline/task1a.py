@@ -49,11 +49,11 @@ def main(data_path: Path):
 
     dev_texts = [
         sample.tweet_text
-        for sample in dataset.dev_test
+        for sample in dataset.dev
     ]
     pred = clf.predict(dev_texts)
 
-    print(evaluate(gold=dataset.dev_test, prediction=build_prediction_samples(dataset.dev_test, pred)))
+    print(evaluate(gold=dataset.dev, prediction=build_prediction_samples(dataset.dev, pred)))
 
 
 if __name__ == '__main__':

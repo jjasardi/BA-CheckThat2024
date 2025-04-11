@@ -1,0 +1,34 @@
+\newpage
+\section{Introduction}
+% TODO what is the purpose of this chapter
+\subsection{Background and Context}
+
+The recent growth of \glspl{osn} has transformed how information is consumed and spread globally. While \glspl{osn} offer significant benefits like real-time information sharing, they also present challenges, particularly in managing misinformation. These platforms have become a catalyst for the spread of faulty claims, complicating efforts to maintain the integrity of information available to the general public
+\cite{esmadisinformation2023}. The challenge of identifying and countering fake news on social media platforms is amplified because this content is often created with the intention to look like legitimate news. This makes it hard for automated systems to discern real information from fake news without additional checks. \cite{esmadisinformation2023}.
+
+The rise of AI-generated content on these networks introduces additional challenges, as these technologies can be used not only to detect misinformation but also to create it. This bifunctional use of AI highlights the increasing complexity of the digital information landscape and the need for advanced verification techniques \cite{esmadisinformation2023}. The spread of misinformation is not limited to \glspl{osn} but is a significant concern in a number of media, including political debates where the integrity of information can significantly influence public opinion.
+
+In the context of political debates, fact-checking has traditionally been a manual process performed by dedicated organizations. However, the fast spread of information necessitates automated approaches to keep up with the volume of content that needs to be verified. Zhijiang Guo et al. discuss how automation has become crucial in fact-checking, employing advanced techniques from natural language processing and machine learning to assess the truthfulness of claims quickly and effectively \cite{guo_automated_factcheckingsurvey}.
+
+However, determining which claims to verify remains a challenge. Current approaches often assess the 'check-worthiness' of claims based on public interest rather than their verifiability, potentially overlooking important but less sensational claims \cite{konstantinovskiy}. This method of selection introduces biases, as noted by Konstantinovskiy et al., who advocate for a shift towards assessing claims based on the availability of evidence that can substantiate or refute them.
+
+Our research utilizes the ClaimBuster dataset, which consists of statements from U.S. presidential debates categorized into non-factual statements, unimportant factual statements, and check-worthy factual statements by a team of human coders, primarily students and some professors \cite{claimbuster_arslan}. This dataset provides a foundation for developing computational methods to identify claims that warrant fact-checking. Nonetheless, the subjective nature of this categorization process, influenced by the coder's perceptions of what constitutes public interest, highlights the need for more objective criteria in claim selection.
+
+\subsection{Objective and Research Question}
+% Objective (why we want to do it, to take part in CT24?) research question/hypothesis
+Our research aims to refine and advance disinformation detection methodologies through the utilization of deep learning models. Our primary objective involves the development and fine-tuning of a deep learning-based model specialized for this purpose. Central to our approach is an in-depth analysis of the dataset provided by the CheckThat Lab 2024, which contains a substantial amount of labeled text samples extracted  from  all  U.S.  general election presidential debates spanning the period from 1960 to 2016, commonly referred to as the ClaimBuster dataset \cite{claimbuster_arslan}. 
+
+Our focus is placed primarily on gaining a comprehensive understanding of how deep learning techniques are presently utilized in the field of fact-checking, and to refine and optimize these methods according to our research’s findings. Secondly, we're experimenting with adjusting various factors to enhance our model's performance. As a result, we undertake a comprehensive examination of the dataset mentioned, analyzing its contextual properties to make it more suitable for the training of our model.
+
+The main functionality of our model lies in its ability to discern claims worthy of being fact-checked from those that are not. It classifies their label into either 'Yes' (indicative of checkworthiness) or 'No' (indicative of non-checkworthiness). This is crucial for automating the fact-checking process, thereby streamlining the arduous task typically associated with manual verification. Given the rapid increase of disinformation across online platforms, particularly in the realm of political discourse, the need for robust automated fact-checking mechanisms has become increasingly important \cite{guo_automated_factcheckingsurvey}.
+
+%TODO INSERT GRAPHIC ON FACT CHECKING PIPELINE
+
+The performance of our model is evaluated by the F1 score metric, defined as the harmonic mean of precision and recall, which serves as a measurement of the predictors efficacy in determining labels for unseen test data \cite{f1_score}. Our participation in Task 1 of the CheckThat Lab involves benchmarking our model against other participants, with rankings determined by the F1 scores achieved on a blind test dataset, inaccessible during model development.
+
+Given the dataset's source, our primary focus lies in the realm of political discourse \cite{claimbuster_arslan}. However, we posit that the insights gained from our research hold broader usability for combating disinformation across diverse genres within the online landscape.
+
+INSERT PARAGRAPH ON STRUCTURE OF THE THESIS
+\subsection{Problem Statement}
+
+%TODO CheckThat Lab 2024 Task 1 im Detail beschreiben. allenfalls einen Teil des Textes von oben hier unten verschieben.

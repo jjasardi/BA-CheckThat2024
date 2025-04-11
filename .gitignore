@@ -3,6 +3,7 @@ output/
 data/
 data_old/
 cache/
+model_dump/
 
 # PyCharm
 .idea/
@@ -136,3 +137,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Weights&Biases
+wandb/
