@@ -1,0 +1,94 @@
+{
+    "os": "Linux-5.15.0-100-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2024-03-25T11:44:01.752951",
+    "startedAt": "2024-03-25T11:44:00.714476",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--data",
+        "./data/",
+        "--base-model",
+        "google/electra-base-discriminator",
+        "--output",
+        "./model_dump/CT_23"
+    ],
+    "state": "running",
+    "program": "-m checkthat2023.finetune_text",
+    "codePathLocal": null,
+    "git": {
+        "remote": "https://github.zhaw.ch/HAMISON/BA-CheckThat2024",
+        "commit": "bb5818c51ef84bc2654b9882827746b58c69bde0"
+    },
+    "email": null,
+    "root": "/home/ubuntu/BA_24/BA-CheckThat2024",
+    "host": "ba24",
+    "username": "ubuntu",
+    "executable": "/home/ubuntu/.cache/pypoetry/virtualenvs/checkthat2023-q5mmoaOm-py3.10/bin/python",
+    "cpu_count": 8,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 2494.14,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2494.14,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2494.14,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2494.14,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2494.14,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2494.14,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2494.14,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2494.14,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2494.14,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 232.4169158935547,
+            "used": 92.19933319091797
+        }
+    },
+    "gpu": "Tesla T4",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "Tesla T4",
+            "memory_total": 16106127360
+        }
+    ],
+    "memory": {
+        "total": 15.613750457763672
+    }
+}

@@ -25,6 +25,7 @@ from transformers import (
 
 from checkthat2024.dataset_utils import TorchDataset
 from checkthat2024.calibration import PlattScaling
+from checkthat2024.calibration import Isotonic
 
 def hf_eval(eval_pred):
     y_pred = np.argmax(eval_pred.predictions, axis=-1)
@@ -90,13 +91,14 @@ def precision_recall_plot(y_test, logits, model_labels):
     wandb.log({"Precision-Recall plot": wandb.Image(plt)})
 
 
-def probability_calibration_plot(y_test, logits, model_labels):
+def probability_calibration_plot(y_test, logits, model_labels, fitted_calibration):
     _, ax = plt.subplots()
     for logits, model_label in zip(logits, model_labels):
         y_test = np.array(y_test, dtype=int)
         logits_tensor = torch.tensor(logits)
         probs = torch.nn.Softmax(dim=1)(logits_tensor)[:, 1]
-        CalibrationDisplay.from_predictions(y_test, probs, name=model_label, ax=ax, n_bins=7)
+        probs = fitted_calibration.transform(probs)
+        CalibrationDisplay.from_predictions(y_test, probs, name=model_label, ax=ax, n_bins=5)
     plt.title('Probability calibration curves')
     wandb.log({"Probability calibration plot": wandb.Image(plt)})
 
@@ -124,7 +126,7 @@ def models_disagreement_matrix(logits):
 
     # Compute disagreement fraction
     disagreement_fraction_matrix = disagreement_matrix / num_samples
-
+    wandb.log({"mean-pairwise disagreement": mean_pairwise_disagreement(disagreement_fraction_matrix)})
     return disagreement_fraction_matrix
 
 def mean_pairwise_disagreement(disagreement_fraction_matrix):
@@ -146,7 +148,6 @@ def f1_for_thresholds(logits, y, model_labels, data_label, fitted_calibration):
 
         percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90]
         thresholds = np.percentile(calibrated_probs, percentiles)
-        print("Probability percentiles:", percentiles)
 
         print(f"Model: {model_label}, data: {data_label}")
         table = wandb.Table(columns=["Threshold", "F1_score"])
@@ -155,7 +156,7 @@ def f1_for_thresholds(logits, y, model_labels, data_label, fitted_calibration):
             f1 = f1_score(y, predicted_labels)
             print(f"Threshold: {threshold:.8f}, F1 Score: {f1}")
             table.add_data(threshold, f1)
-        wandb.log({f"{model_label}_{data_label}": table})
+        #wandb.log({f"{model_label}_{data_label}": table})
 
 def get_fitted_calibration_method(dataset, model_name):
     random_indices = random.sample(range(len(dataset.train)), 100)
@@ -169,7 +170,7 @@ def get_fitted_calibration_method(dataset, model_name):
     predictions = torch.tensor(predictions)
     probs_yes_class = torch.nn.Softmax(dim=1)(predictions)[:, 1].numpy()
 
-    calibration_method = PlattScaling()
+    calibration_method = Isotonic()
     calibration_method.fit(probs_yes_class, y_train)
     return calibration_method
 
@@ -179,7 +180,8 @@ def get_predictions(model_name, x, y):
 
     test = TorchDataset.from_samples(x, y, tokenizer)
     trainer = Trainer(model=model)
-    predictions = trainer.predict(test_dataset=test).predictions
+    predictions, _, metrics = trainer.predict(test_dataset=test)
+    print(metrics)
     return predictions
 
 def visualize_matrix(matrix, model_labels, plot_name):
@@ -222,20 +224,26 @@ if __name__ == "__main__":
     dataset = load(data_folder=args.data_folder, dev=args.dev_mode)
     x_test = [s.text for s in dataset.test]
     y_test = [s.class_label for s in dataset.test]
-
+# 
+#     model_names = []
+#     for file in args.logits_files:
+#         model_name = os.path.basename(os.path.dirname(file))
+#         model_names.append(model_name)
+#     predictions = get_predictions(model_names[0], x_test, y_test)
+#     print(f1_score(y_test, np.argmax(predictions, axis=1)))
+# 
     misclassified_samples = misclassified_samples(x_test, y_test, logits, args.model_labels)
 
     wandb.init(project="ba24-check-worthiness-estimation", mode="disabled", group="general-plots", name="general-plots", config={"data":args.data_folder.name})
 
     precision_recall_plot(y_test, logits, args.model_labels)
 
-    # probability_calibration_plot(y_test, logits, args.model_labels)
+    if len(args.logits_files) > 2:
+        correlation_matrix = models_outputs_correlation_matrix(logits)
+        visualize_matrix(correlation_matrix, args.model_labels, "Correlation of model predictions")
 
-    correlation_matrix = models_outputs_correlation_matrix(logits)
-    visualize_matrix(correlation_matrix, args.model_labels, "Correlation of model predictions")
-
-    disagreement_matrix = models_disagreement_matrix(logits)
-    visualize_matrix(disagreement_matrix, args.model_labels, "Disagreement of model predictions")
+        disagreement_matrix = models_disagreement_matrix(logits)
+        visualize_matrix(disagreement_matrix, args.model_labels, "Disagreement of model predictions")
 
     model_names = []
     for file in args.logits_files:
@@ -252,3 +260,5 @@ if __name__ == "__main__":
     f1_for_thresholds(logits_dev, y_dev, args.model_labels, "y_dev", fitted_calibration)
 
     f1_for_thresholds(logits, y_test, args.model_labels, "y_test", fitted_calibration)
+
+    probability_calibration_plot(y_test, logits, args.model_labels, fitted_calibration)
